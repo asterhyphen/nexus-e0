@@ -42,12 +42,10 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
     } catch (err: any) {
       setFailedAttempts((prev) => prev + 1);
       const msg = err.message || '';
-      if (msg.includes('Invalid admin') || msg.includes('credentials')) {
-        setError('Invalid admin credentials.');
-      } else if (msg.toLowerCase().includes('rate limit')) {
+      if (msg.toLowerCase().includes('rate limit')) {
         setError(msg);
       } else {
-        setError(msg || 'Invalid admin credentials.');
+        setError('Invalid admin credentials.');
       }
     } finally {
       setIsLoading(false);
@@ -55,32 +53,32 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col justify-between p-6 selection:bg-white selection:text-black">
-      {/* Top Bar */}
-      <header className="flex items-center justify-between max-w-4xl mx-auto w-full border-b border-white/10 pb-6">
+    <div className="min-h-screen bg-black text-white flex flex-col justify-between p-6 sm:p-10 selection:bg-white selection:text-black">
+      {/* Top Header */}
+      <header className="flex items-center justify-between max-w-4xl mx-auto w-full">
         <button
           onClick={onNavigateHome}
-          className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-neutral-400 hover:text-white transition-colors"
+          className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-neutral-500 hover:text-white transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Return to Landing</span>
+          <span>Landing</span>
         </button>
-        <span className="font-mono text-xs text-neutral-500 uppercase tracking-widest">
-          Nexus E-0 // Root Portal
+        <span className="font-mono text-xs text-neutral-600 uppercase tracking-widest">
+          Admin Portal
         </span>
       </header>
 
-      {/* Main Login */}
+      {/* Main Container */}
       <main className="max-w-md mx-auto w-full my-auto space-y-8 text-center">
         <div className="space-y-3">
           <div className="w-12 h-12 border border-white/20 bg-neutral-950 flex items-center justify-center mx-auto text-white">
             <Lock className="w-5 h-5" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-display font-medium uppercase tracking-tight text-white">
-            Root Authorization
+          <h1 className="text-4xl md:text-5xl font-display font-light uppercase tracking-tight text-white">
+            Admin Access
           </h1>
-          <p className="text-xs text-neutral-400 font-sans leading-relaxed">
-            Enter administrative master password to coordinate state phases, track assignments, and derangement shuffling.
+          <p className="text-xs text-neutral-500 font-sans leading-relaxed">
+            Enter administrator password
           </p>
         </div>
 
@@ -93,7 +91,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
                 setPassword(e.target.value);
                 if (error) setError(null);
               }}
-              placeholder="ENTER ADMIN PASSWORD"
+              placeholder="Enter password"
               disabled={isLoading || failedAttempts >= 5}
               autoFocus
               className="w-full h-14 pl-5 pr-14 bg-black text-white font-mono text-sm tracking-widest border border-white/20 focus:border-white focus:outline-none transition-colors placeholder:text-neutral-700 disabled:opacity-40"
@@ -126,15 +124,11 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
             )}
           </AnimatePresence>
         </form>
-
-        <div className="pt-4 border-t border-white/10 text-[11px] font-mono text-neutral-500">
-          Default seed password: <span className="text-neutral-300 select-all">adminnexus2026</span>
-        </div>
       </main>
 
       {/* Footer */}
-      <footer className="text-center text-xs font-mono text-neutral-600 uppercase tracking-widest">
-        Encrypted Database // SHA-256 &amp; Bcrypt Auth
+      <footer className="text-center text-xs font-mono text-neutral-700 uppercase tracking-widest">
+        Nexus 0
       </footer>
     </div>
   );

@@ -152,7 +152,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ session, onLogout }) => {
                 exit={{ opacity: 0 }}
                 className="py-6 flex items-center gap-3 text-neutral-500"
               >
-                <span className="w-2 h-2 bg-white inline-block animate-pulse" />
+                <span className="w-1.5 h-1.5 bg-white inline-block" />
                 <span className="text-xs font-mono uppercase tracking-widest text-neutral-400">
                   Track assignment will appear once coordinator initiates phase
                 </span>
