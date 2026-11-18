@@ -845,7 +845,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
           <div className="border border-white/15 bg-neutral-950 divide-y divide-white/10">
             {data?.statements.map((stmt) => {
-              const assignedTeams = data?.teams.filter((t) => t.assigned_statement_id === stmt.id) || [];
+              const assignedTeam = data?.teams.find((t) => t.assigned_statement_id === stmt.id);
 
               return (
                 <div key={stmt.id} className="p-4 hover:bg-white/5 transition-colors space-y-3">
@@ -872,19 +872,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   </p>
 
                   <div className="pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">
                         ASSIGNED TO:
                       </span>
-                      {assignedTeams.length > 0 ? (
-                        assignedTeams.map((t) => (
-                          <span
-                            key={t.id}
-                            className="px-2 py-0.5 bg-white text-black font-bold text-[11px] uppercase tracking-wide border border-white"
-                          >
-                            {t.name}
-                          </span>
-                        ))
+                      {assignedTeam ? (
+                        <span className="px-2.5 py-0.5 bg-white text-black font-bold text-[11px] uppercase tracking-wide border border-white">
+                          {assignedTeam.name}
+                        </span>
                       ) : (
                         <span className="text-[11px] text-neutral-500 uppercase italic">
                           Unassigned (In Pool)
@@ -893,7 +888,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     </div>
 
                     <span className="text-[10px] text-neutral-400 font-mono">
-                      {assignedTeams.length} {assignedTeams.length === 1 ? 'TEAM' : 'TEAMS'} ASSIGNED
+                      {assignedTeam ? '1 TEAM ASSIGNED (UNIQUE)' : 'UNASSIGNED'}
                     </span>
                   </div>
                 </div>

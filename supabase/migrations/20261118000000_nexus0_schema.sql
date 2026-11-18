@@ -642,7 +642,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 
--- ADMIN SHUFFLE & ASSIGN STATEMENTS (BULLETPROOF DERANGEMENT WITH POOL CYCLING)
+-- ADMIN SHUFFLE & ASSIGN STATEMENTS (STRICT 1-TO-1 UNIQUE DERANGEMENT)
 CREATE OR REPLACE FUNCTION public.rpc_admin_shuffle_statements(p_token TEXT)
 RETURNS JSONB AS $$
 DECLARE
@@ -650,15 +650,26 @@ DECLARE
     v_stmt_count INT;
     v_team_ids UUID[];
     v_own_stmt_ids UUID[];
-    v_available_stmts UUID[];
+    v_shuffled_pool UUID[];
     v_assigned_stmt_ids UUID[];
     v_attempts INT := 0;
     v_success BOOLEAN := false;
-    v_candidate_pool UUID[];
     v_valid BOOLEAN;
     i INT;
     j INT;
     v_temp UUID;
+    v_needed INT;
+    v_seed_bank TEXT[] := ARRAY[
+        'Architect a high-performance, fault-tolerant realtime distributed synchronization mesh with zero-downtime recovery and end-to-end data integrity.',
+        'Design and implement an autonomous, offline-first peer-to-peer event routing system with cryptographically verifiable audit trails.',
+        'Build a zero-knowledge credential verification gateway with sub-millisecond latency and automated rate-limiting enforcement.',
+        'Implement an asynchronous event-driven state machine with distributed lock leasing, idempotency keys, and self-healing consensus.',
+        'Develop an ultra-low latency real-time collaborative whiteboard engine supporting conflict-free replicated data types (CRDTs).',
+        'Engineer a resilient API gateway with dynamic token-bucket rate limiting, automatic circuit breakers, and anomaly detection.',
+        'Design a decentralized identity and session management protocol resistant to replay attacks and token spoofing.',
+        'Build a streaming telemetry and metrics aggregation pipeline capable of processing 100k events/sec with sliding window analytics.'
+    ];
+    v_seed_idx INT := 1;
 BEGIN
     PERFORM public.verify_admin_session(p_token);
 
@@ -667,31 +678,25 @@ BEGIN
         RAISE EXCEPTION 'No teams registered.';
     END IF;
 
-    -- Collect all available statements
-    SELECT array_agg(id ORDER BY gen_random_uuid()) INTO v_available_stmts 
-    FROM public.problem_statements;
-    
-    v_stmt_count := COALESCE(array_length(v_available_stmts, 1), 0);
-    
-    -- If no statements at all in database, auto-seed a platform challenge
-    IF v_stmt_count = 0 THEN
-        INSERT INTO public.problem_statements (body, source, created_at, updated_at)
-        VALUES ('Architect a high-performance, fault-tolerant realtime distributed synchronization system with zero-downtime recovery and end-to-end data integrity.', 'admin', now(), now());
-        
-        SELECT array_agg(id ORDER BY gen_random_uuid()) INTO v_available_stmts 
-        FROM public.problem_statements;
-        v_stmt_count := COALESCE(array_length(v_available_stmts, 1), 0);
+    -- Count distinct statements currently in pool
+    SELECT COUNT(*) INTO v_stmt_count FROM public.problem_statements;
+
+    -- If fewer statements than teams, auto-seed distinct admin statements
+    -- so that every team receives a UNIQUE statement (no statement given to > 1 team):
+    IF v_stmt_count < v_team_count THEN
+        v_needed := v_team_count - v_stmt_count;
+        FOR i IN 1..v_needed LOOP
+            v_seed_idx := ((i - 1) % array_length(v_seed_bank, 1)) + 1;
+            INSERT INTO public.problem_statements (body, source, created_at, updated_at)
+            VALUES (v_seed_bank[v_seed_idx] || ' [Ref: ' || substr(gen_random_uuid()::text, 1, 8) || ']', 'admin', now(), now());
+        END LOOP;
     END IF;
 
-    -- If there is only 1 statement in the pool and teams exist, add an extra statement
-    -- so derangement is mathematically guaranteed without any team getting its own statement:
-    IF v_stmt_count < 2 THEN
+    -- If there are only 1 or 2 teams and we need to ensure non-self assignment
+    SELECT COUNT(*) INTO v_stmt_count FROM public.problem_statements;
+    IF v_stmt_count < 2 AND v_team_count > 1 THEN
         INSERT INTO public.problem_statements (body, source, created_at, updated_at)
-        VALUES ('Design and implement an autonomous, offline-capable event routing mesh with cryptographically verifiable audit trails.', 'admin', now(), now());
-        
-        SELECT array_agg(id ORDER BY gen_random_uuid()) INTO v_available_stmts 
-        FROM public.problem_statements;
-        v_stmt_count := COALESCE(array_length(v_available_stmts, 1), 0);
+        VALUES ('Design and implement an autonomous, offline-first peer-to-peer event routing mesh with cryptographically verifiable audit trails.', 'admin', now(), now());
     END IF;
 
     -- Get teams and their own statements (if any)
@@ -702,23 +707,21 @@ BEGIN
     FROM public.teams t
     LEFT JOIN public.problem_statements ps ON ps.team_id = t.id;
 
-    -- Attempt random derangement with pool cycling
+    -- Find a 1-to-1 unique derangement (every statement in the slice is pairwise distinct)
     WHILE NOT v_success AND v_attempts < 2000 LOOP
         v_attempts := v_attempts + 1;
-        v_candidate_pool := ARRAY[]::UUID[];
         
-        -- Pick random statement from pool for each team
-        FOR i IN 1..v_team_count LOOP
-            v_candidate_pool := array_append(
-                v_candidate_pool, 
-                v_available_stmts[(floor(random() * v_stmt_count)::INT) + 1]
-            );
-        END LOOP;
+        -- Shuffle all distinct statements in the database
+        SELECT array_agg(id ORDER BY gen_random_uuid()) INTO v_shuffled_pool 
+        FROM public.problem_statements;
+        
+        -- Take the first v_team_count DISTINCT statements from the shuffled pool
+        v_assigned_stmt_ids := v_shuffled_pool[1:v_team_count];
 
-        -- Validate derangement constraint (no team receives its own statement)
+        -- Check derangement constraint: no team receives its own statement
         v_valid := true;
         FOR i IN 1..v_team_count LOOP
-            IF v_own_stmt_ids[i] IS NOT NULL AND v_candidate_pool[i] = v_own_stmt_ids[i] THEN
+            IF v_own_stmt_ids[i] IS NOT NULL AND v_assigned_stmt_ids[i] = v_own_stmt_ids[i] THEN
                 v_valid := false;
                 EXIT;
             END IF;
@@ -726,19 +729,21 @@ BEGIN
 
         IF v_valid THEN
             v_success := true;
-            v_assigned_stmt_ids := v_candidate_pool;
         END IF;
     END LOOP;
 
-    -- Deterministic fallback to ensure strict non-self assignment
+    -- Deterministic permutation swap fallback if random attempts had a collision
     IF NOT v_success THEN
-        v_assigned_stmt_ids := v_candidate_pool;
         FOR i IN 1..v_team_count LOOP
             IF v_own_stmt_ids[i] IS NOT NULL AND v_assigned_stmt_ids[i] = v_own_stmt_ids[i] THEN
-                -- Find another statement in the available pool that is not this team's own statement
-                FOR j IN 1..v_stmt_count LOOP
-                    IF v_available_stmts[j] <> v_own_stmt_ids[i] THEN
-                        v_assigned_stmt_ids[i] := v_available_stmts[j];
+                -- Find another index j to swap with where neither gets its own statement
+                FOR j IN 1..v_team_count LOOP
+                    IF j <> i AND 
+                       (v_own_stmt_ids[j] IS NULL OR v_assigned_stmt_ids[i] <> v_own_stmt_ids[j]) AND
+                       (v_own_stmt_ids[i] IS NULL OR v_assigned_stmt_ids[j] <> v_own_stmt_ids[i]) THEN
+                        v_temp := v_assigned_stmt_ids[i];
+                        v_assigned_stmt_ids[i] := v_assigned_stmt_ids[j];
+                        v_assigned_stmt_ids[j] := v_temp;
                         EXIT;
                     END IF;
                 END LOOP;
@@ -746,7 +751,7 @@ BEGIN
         END LOOP;
     END IF;
 
-    -- Persist assignments for all teams
+    -- Persist 1-to-1 unique assignments: exactly one unique statement per team
     FOR i IN 1..v_team_count LOOP
         UPDATE public.teams
         SET assigned_statement_id = v_assigned_stmt_ids[i]
@@ -757,7 +762,10 @@ BEGIN
     UPDATE public.event_state SET phase = 'statements_assigned', updated_at = now() WHERE id = 1;
 
     INSERT INTO public.audit_logs (action, details) 
-    VALUES ('shuffle_statements', jsonb_build_object('teams_count', v_team_count, 'statements_count', v_stmt_count));
+    VALUES ('shuffle_statements', jsonb_build_object(
+        'teams_count', v_team_count, 
+        'unique_1_to_1', true
+    ));
 
     RETURN jsonb_build_object(
         'success', true,
