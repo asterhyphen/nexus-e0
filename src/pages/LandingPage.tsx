@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Lock, AlertCircle, ShieldAlert } from 'lucide-react';
+import { ArrowRight, AlertCircle, ShieldAlert } from 'lucide-react';
 import { teamCodeSchema } from '../schemas';
 import { apiTeamLogin } from '../lib/supabase';
 import { TeamSession } from '../types';
 
 interface LandingPageProps {
   onLoginSuccess: (session: TeamSession) => void;
-  onNavigateToAdmin: () => void;
+  onNavigateToAdmin?: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNavigateToAdmin }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -127,15 +127,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNavi
         </form>
       </main>
 
-      {/* Footer */}
-      <footer className="flex items-center justify-center max-w-5xl mx-auto w-full text-xs font-mono text-neutral-600">
-        <button
-          onClick={onNavigateToAdmin}
-          className="flex items-center gap-1.5 text-neutral-500 hover:text-white transition-colors"
-        >
-          <Lock className="w-3 h-3" />
-          <span>Admin</span>
-        </button>
+      {/* Footer (Clean, no admin link) */}
+      <footer className="max-w-5xl mx-auto w-full py-4 text-center text-[11px] font-mono text-neutral-800 uppercase tracking-widest select-none">
+        Nexus E-0
       </footer>
     </div>
   );

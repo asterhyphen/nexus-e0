@@ -20,9 +20,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ session, onLogout }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const DRAFT_STORAGE_KEY = `nexus_draft_${session.team_id}`;
   const isInitializedRef = useRef(false);
-  const userHasTypedRef = useRef(false);
   const hadSubmittedRef = useRef(false);
 
   const fetchData = useCallback(async (manual = false) => {
@@ -32,29 +30,22 @@ export const TeamPage: React.FC<TeamPageProps> = ({ session, onLogout }) => {
       setData(res);
 
       if (!isInitializedRef.current) {
-        // Initial load: prefer server statement if already submitted, otherwise local draft
+        // Initial load: populate only if a submitted statement exists in DB
         if (res.own_statement?.body) {
           setStatementText(res.own_statement.body);
           hadSubmittedRef.current = true;
         } else {
-          try {
-            const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
-            if (savedDraft) {
-              setStatementText(savedDraft);
-              userHasTypedRef.current = true;
-            }
-          } catch (_) {}
+          setStatementText('');
+          hadSubmittedRef.current = false;
         }
         isInitializedRef.current = true;
       } else {
-        // Background sync: NEVER clear user's actively drafted input on blur/tab switch!
-        // Only clear if team previously submitted, admin wiped the DB, and user hasn't typed a new draft.
-        if (hadSubmittedRef.current && !res.own_statement && !userHasTypedRef.current) {
+        // Background sync:
+        // If team previously submitted, but now res.own_statement is NULL (ADMIN HAS RESET!),
+        // immediately clear the textarea and reset submitted status!
+        if (hadSubmittedRef.current && !res.own_statement) {
           setStatementText('');
           hadSubmittedRef.current = false;
-          try {
-            localStorage.removeItem(DRAFT_STORAGE_KEY);
-          } catch (_) {}
         } else if (res.own_statement) {
           hadSubmittedRef.current = true;
         }
@@ -68,7 +59,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ session, onLogout }) => {
         setTimeout(() => setIsRefreshing(false), 500);
       }
     }
-  }, [session.token, onLogout, DRAFT_STORAGE_KEY]);
+  }, [session.token, onLogout]);
 
   useEffect(() => {
     fetchData();
@@ -111,11 +102,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ session, onLogout }) => {
     try {
       await apiTeamSubmitStatement(session.token, validation.data);
       setSubmitSuccess(true);
-      userHasTypedRef.current = false;
       hadSubmittedRef.current = true;
-      try {
-        localStorage.removeItem(DRAFT_STORAGE_KEY);
-      } catch (_) {}
       await fetchData();
       setTimeout(() => setSubmitSuccess(false), 4000);
     } catch (err: any) {
@@ -312,12 +299,8 @@ export const TeamPage: React.FC<TeamPageProps> = ({ session, onLogout }) => {
               <textarea
                 value={statementText}
                 onChange={(e) => {
-                  userHasTypedRef.current = true;
                   if (e.target.value.length <= 500) {
                     setStatementText(e.target.value);
-                    try {
-                      localStorage.setItem(DRAFT_STORAGE_KEY, e.target.value);
-                    } catch (_) {}
                   }
                 }}
                 disabled={!isSubmissionsOpen || isSubmitting}

@@ -186,9 +186,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     setActionLoading(true);
     try {
       await apiAdminResetAssignments(token, target);
-      showNotification(`Reset completed for ${target}.`);
+
+      // DIRECT CLEANUP: Forcefully delete every team problem statement
+      // Guarantees clean wipe even if the remote DB has not yet applied the SQL patch
+      if (target === 'statements' || target === 'all') {
+        const teamStatements = (data?.statements || []).filter((s) => s.source === 'team');
+        for (const s of teamStatements) {
+          try {
+            await apiAdminDeleteStatement(token, s.id);
+          } catch (delErr) {
+            console.error('Error deleting team statement:', s.id, delErr);
+          }
+        }
+
+        if (target === 'statements') {
+          await apiAdminSetPhase(token, 'submissions_open');
+        }
+      }
+
+      showNotification(`Reset completed for ${target}. All submissions cleared.`);
       setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-      fetchOverview();
+      await fetchOverview();
     } catch (err: any) {
       showNotification(err.message, 'error');
     } finally {
