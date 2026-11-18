@@ -52,30 +52,33 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
   };
 
   return (
-    <div className="relative min-h-[92vh] flex flex-col items-center justify-center px-4">
-      {/* Back button */}
-      <div className="absolute top-6 left-6">
+    <div className="min-h-screen bg-black text-white flex flex-col justify-between p-6 selection:bg-white selection:text-black">
+      {/* Top Bar */}
+      <header className="flex items-center justify-between max-w-4xl mx-auto w-full border-b border-white/10 pb-6">
         <button
           onClick={onNavigateHome}
-          className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text transition-colors px-3 py-1.5 rounded-xl bg-surface border border-border"
+          className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-neutral-400 hover:text-white transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Landing</span>
+          <span>Return to Landing</span>
         </button>
-      </div>
+        <span className="font-mono text-xs text-neutral-500 uppercase tracking-widest">
+          Nexus 0 // Root Portal
+        </span>
+      </header>
 
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-sm mx-auto text-center space-y-8"
-      >
-        <div className="space-y-2 select-none">
-          <div className="w-12 h-12 rounded-2xl bg-surface-subtle border border-border flex items-center justify-center mx-auto text-accent mb-3">
+      {/* Main Login */}
+      <main className="max-w-md mx-auto w-full my-auto space-y-8 text-center">
+        <div className="space-y-3">
+          <div className="w-12 h-12 border border-white/20 bg-neutral-950 flex items-center justify-center mx-auto text-white">
             <Lock className="w-5 h-5" />
           </div>
-          <h1 className="text-3xl font-light tracking-tight text-text">Admin Access</h1>
-          <p className="text-xs text-text-muted">Enter master password to access event controls</p>
+          <h1 className="text-4xl md:text-5xl font-display font-medium uppercase tracking-tight text-white">
+            Root Authorization
+          </h1>
+          <p className="text-xs text-neutral-400 font-sans leading-relaxed">
+            Enter administrative master password to coordinate state phases, track assignments, and derangement shuffling.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -87,19 +90,19 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
                 setPassword(e.target.value);
                 if (error) setError(null);
               }}
-              placeholder="Enter admin password"
+              placeholder="ENTER ADMIN PASSWORD"
               disabled={isLoading || failedAttempts >= 5}
               autoFocus
-              className="w-full h-13 pl-4 pr-12 bg-surface text-text text-sm rounded-xl border border-border focus:border-accent focus:ring-1 focus:ring-accent/40 placeholder:text-text-dim transition-all outline-none disabled:opacity-50"
+              className="w-full h-14 pl-5 pr-14 bg-black text-white font-mono text-sm tracking-widest border border-white/20 focus:border-white focus:outline-none transition-colors placeholder:text-neutral-700 disabled:opacity-40"
             />
             <button
               type="submit"
               disabled={isLoading || !password || failedAttempts >= 5}
               aria-label="Submit admin password"
-              className="absolute right-2 top-2 h-9 w-9 flex items-center justify-center rounded-lg bg-surface-subtle hover:bg-accent text-text-muted hover:text-white border border-border hover:border-accent transition-all disabled:opacity-30 disabled:hover:bg-surface-subtle disabled:hover:text-text-muted"
+              className="absolute right-2 top-2 h-10 w-10 flex items-center justify-center bg-white text-black hover:bg-neutral-200 transition-colors disabled:opacity-20 disabled:hover:bg-white"
             >
               {isLoading ? (
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               ) : (
                 <ArrowRight className="w-4 h-4" />
               )}
@@ -112,7 +115,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                className="flex items-center justify-center gap-1.5 text-xs text-rose-400 font-mono"
+                className="flex items-center justify-center gap-1.5 text-xs text-neutral-300 font-mono"
               >
                 <AlertCircle className="w-3.5 h-3.5" />
                 <span>{error}</span>
@@ -121,10 +124,15 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
           </AnimatePresence>
         </form>
 
-        <div className="text-[11px] text-text-dim font-mono">
-          Default seed password: <span className="text-text-muted font-mono select-all">adminnexus2026</span>
+        <div className="pt-4 border-t border-white/10 text-[11px] font-mono text-neutral-500">
+          Default seed password: <span className="text-neutral-300 select-all">adminnexus2026</span>
         </div>
-      </motion.div>
+      </main>
+
+      {/* Footer */}
+      <footer className="text-center text-xs font-mono text-neutral-600 uppercase tracking-widest">
+        Encrypted Database // SHA-256 &amp; Bcrypt Auth
+      </footer>
     </div>
   );
 };

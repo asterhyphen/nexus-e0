@@ -3,7 +3,6 @@ import { LandingPage } from './pages/LandingPage';
 import { TeamPage } from './pages/TeamPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
-import { Banner } from './components/Banner';
 import { TeamSession } from './types';
 
 export const App: React.FC = () => {
@@ -124,8 +123,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-text flex flex-col font-sans selection:bg-accent selection:text-white">
-      <Banner />
+    <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-white selection:text-black">
       <main className="flex-1">{renderPage()}</main>
     </div>
   );

@@ -17,7 +17,7 @@ import {
   Upload,
   Key,
   ShieldCheck,
-  CheckCircle2,
+  Check,
   ExternalLink,
 } from 'lucide-react';
 import {
@@ -55,6 +55,43 @@ interface AdminDashboardPageProps {
 
 type TabType = 'control' | 'teams' | 'tracks' | 'statements' | 'settings';
 
+const SAMPLE_BULK_TEAMS = `Quantum Leap,NEX-1001
+CyberPulse,NEX-1002
+AeroDynamics,NEX-1003
+Synapse Labs,NEX-1004
+HyperDrive,NEX-1005
+ZeroDay Hunters,NEX-1006
+Vortex Minds,NEX-1007
+AlgoRhythm,NEX-1008
+DeepForge,NEX-1009
+ByteCrafters,NEX-1010
+Solaris Squad,NEX-1011
+Helix Innovators,NEX-1012
+OmniShield,NEX-1013
+EchoLogic,NEX-1014
+VectorEdge,NEX-1015
+Phantom Protocol,NEX-1016
+Nebula Dynamics,NEX-1017
+ChronoByte,NEX-1018
+Apex Intellect,NEX-1019
+Horizon Matrix,NEX-1020`;
+
+const SAMPLE_TRACKS = [
+  'Artificial Intelligence & Agents',
+  'Decentralized Systems & Web3',
+  'Cybersecurity & Privacy Shield',
+  'Fintech & Algorithmic Markets',
+  'Healthcare & BioTech Solutions',
+  'Climate Tech & Clean Energy',
+];
+
+const SAMPLE_STATEMENTS = [
+  'Design a zero-knowledge identity verification gateway for decentralized autonomous organizations without storing biometric data.',
+  'Create an offline-first mesh disaster relief coordinator using Bluetooth Low Energy and localized vector embeddings.',
+  'Build an autonomous agent pipeline that detects subtle smart contract reentrancy bugs using formal symbolic execution.',
+  'Develop an ultra-low latency real-time telemetry anomaly detector for electric vehicle battery cell degradation.',
+];
+
 export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   token,
   onLogout,
@@ -65,7 +102,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // Modals state
+  // Confirmation modal
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -127,18 +164,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       })
       .subscribe();
 
-    // Mock store update listener
-    const handleMockUpdate = () => {
-      fetchOverview();
-    };
-    window.addEventListener('nexus0_mock_update', handleMockUpdate);
-
-    // Refresh interval
     const interval = setInterval(fetchOverview, 4000);
 
     return () => {
       supabase.removeChannel(channel);
-      window.removeEventListener('nexus0_mock_update', handleMockUpdate);
       clearInterval(interval);
     };
   }, [fetchOverview]);
@@ -256,8 +285,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     setConfirmModal({
       isOpen: true,
       title: 'Delete Team',
-      description: `Are you sure you want to delete team "${name}"? This will remove all their submissions and assignments.`,
-      confirmText: 'Delete',
+      description: `Confirm permanent removal of team "${name}"? All related submissions will be pruned.`,
+      confirmText: 'Delete Team',
       variant: 'danger',
       onConfirm: async () => {
         try {
@@ -275,7 +304,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const handleRegenerateCode = async (id: string, name: string) => {
     try {
       const res = await apiAdminRegenerateCode(token, id);
-      showNotification(`New code generated for ${name}: ${res.new_code}`);
+      showNotification(`New code for ${name}: ${res.new_code}`);
       fetchOverview();
     } catch (err: any) {
       showNotification(err.message, 'error');
@@ -306,7 +335,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     setConfirmModal({
       isOpen: true,
       title: 'Delete Track',
-      description: `Delete track "${name}"? Any teams assigned to this track will become unassigned.`,
+      description: `Delete track "${name}"? Assigned teams will revert to unassigned.`,
       confirmText: 'Delete Track',
       variant: 'danger',
       onConfirm: async () => {
@@ -327,7 +356,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     if (newStatementBody.trim().length < 10) return;
     try {
       await apiAdminAddStatement(token, newStatementBody.trim());
-      showNotification('Admin statement added to the pool.');
+      showNotification('Admin statement added to pool.');
       setNewStatementBody('');
       setIsStatementModalOpen(false);
       fetchOverview();
@@ -339,7 +368,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const handleDeleteStatement = async (id: string) => {
     try {
       await apiAdminDeleteStatement(token, id);
-      showNotification('Statement deleted.');
+      showNotification('Statement removed.');
       fetchOverview();
     } catch (err: any) {
       showNotification(err.message, 'error');
@@ -366,73 +395,75 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const totalCapacity = tracksCount * maxTeamsInput;
 
   return (
-    <div className="min-h-screen pb-20 pt-6 px-4 md:px-8 max-w-6xl mx-auto space-y-6">
-      {/* Top Header */}
-      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-border">
+    <div className="min-h-screen bg-black text-white pb-24 pt-8 px-6 max-w-6xl mx-auto space-y-8 selection:bg-white selection:text-black">
+      {/* Top Architectural Header */}
+      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-light text-text tracking-tight">Nexus 0 Dashboard</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl md:text-4xl font-display font-medium uppercase tracking-tight text-white">
+              Nexus 0 // Admin Console
+            </h1>
             <PhaseBadge phase={currentPhase} size="md" />
           </div>
-          <p className="text-xs text-text-muted mt-1 font-mono">
-            {teamsCount} Teams • {tracksCount} Tracks • {statementsCount} Statements in pool
+          <p className="text-xs font-mono text-neutral-500 mt-1 uppercase tracking-wider">
+            {teamsCount} Teams // {tracksCount} Tracks // {statementsCount} Challenge Pool // {submittedCount} Submitted
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 font-mono text-xs">
           <button
             onClick={fetchOverview}
-            className="p-2 rounded-xl bg-surface hover:bg-surface-hover border border-border text-text-muted hover:text-text transition-colors"
-            title="Refresh data"
+            className="p-2.5 bg-neutral-950 border border-white/10 hover:border-white/40 text-neutral-400 hover:text-white transition-colors"
+            title="Refresh state"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={onNavigateHome}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface hover:bg-surface-hover border border-border text-xs text-text-muted hover:text-text transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-neutral-950 border border-white/10 hover:border-white/40 text-neutral-400 hover:text-white uppercase tracking-wider transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5" />
             <span>Landing</span>
           </button>
           <button
             onClick={onLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface hover:bg-rose-500/10 border border-border hover:border-rose-500/30 text-xs text-rose-400 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-neutral-950 border border-white/10 hover:border-white/40 text-neutral-400 hover:text-white uppercase tracking-wider transition-colors"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>Logout</span>
+            <span>Exit</span>
           </button>
         </div>
       </header>
 
-      {/* Toast Notification */}
+      {/* Notification Banner */}
       <AnimatePresence>
         {message && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className={`px-4 py-2.5 rounded-xl text-xs font-mono border flex items-center justify-between gap-2 shadow-subtle ${
+            exit={{ opacity: 0, y: -6 }}
+            className={`p-3 text-xs font-mono border flex items-center justify-between gap-2 ${
               message.type === 'error'
-                ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                ? 'bg-neutral-900 border-white/30 text-white'
+                : 'bg-white text-black border-white'
             }`}
           >
-            <span>{message.text}</span>
-            <button onClick={() => setMessage(null)} className="hover:opacity-75">
+            <span>[NOTIFICATION] {message.text}</span>
+            <button onClick={() => setMessage(null)} className="font-bold">
               ×
             </button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Tabs Navigation */}
-      <nav className="flex items-center gap-1 overflow-x-auto border-b border-border pb-1">
+      {/* Navigation Tabs */}
+      <nav className="flex items-center gap-px bg-white/10 border border-white/10 p-px overflow-x-auto font-mono text-xs uppercase tracking-wider">
         {[
-          { id: 'control', label: 'Event Control', icon: Sliders },
-          { id: 'teams', label: `Teams (${teamsCount})`, icon: Users },
-          { id: 'tracks', label: `Tracks (${tracksCount})`, icon: Compass },
-          { id: 'statements', label: `Statements (${statementsCount})`, icon: FileText },
-          { id: 'settings', label: 'Settings & Logs', icon: Settings },
+          { id: 'control', label: 'Event Flow', icon: Sliders },
+          { id: 'teams', label: `Teams [${teamsCount}]`, icon: Users },
+          { id: 'tracks', label: `Tracks [${tracksCount}]`, icon: Compass },
+          { id: 'statements', label: `Statements [${statementsCount}]`, icon: FileText },
+          { id: 'settings', label: 'Settings & Security', icon: Settings },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -440,13 +471,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as TabType)}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-xl transition-all whitespace-nowrap ${
-                isActive
-                  ? 'bg-surface-subtle text-text border border-border shadow-subtle'
-                  : 'text-text-muted hover:text-text hover:bg-surface/50'
+              className={`flex items-center gap-2 px-5 py-3 transition-colors whitespace-nowrap ${
+                isActive ? 'bg-white text-black font-semibold' : 'bg-black text-neutral-400 hover:text-white hover:bg-neutral-900'
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-accent' : 'opacity-60'}`} />
+              <Icon className="w-3.5 h-3.5" />
               <span>{tab.label}</span>
             </button>
           );
@@ -455,106 +484,106 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
       {/* TAB 1: EVENT CONTROL */}
       {activeTab === 'control' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+        <div className="space-y-6">
           {/* Phase Flow Stepper */}
-          <div className="bg-surface rounded-2xl border border-border p-6 shadow-subtle space-y-4">
-            <h3 className="text-sm font-medium text-text">Event Flow State Machine</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+          <div className="border border-white/15 bg-neutral-950 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="text-base font-display uppercase tracking-wide text-white">Event State Machine</h3>
+              <span className="text-[11px] font-mono text-neutral-500 uppercase">Click any phase to override state</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
               {[
-                { key: 'setup', step: '1. Setup', desc: 'Teams & tracks added' },
-                { key: 'tracks_assigned', step: '2. Tracks Assigned', desc: 'Teams see their track' },
-                { key: 'submissions_open', step: '3. Submissions Open', desc: 'Teams submit statement' },
-                { key: 'submissions_closed', step: '4. Submissions Locked', desc: 'Locked for shuffle' },
-                { key: 'statements_assigned', step: '5. Statements Assigned', desc: 'Teams see challenge' },
+                { key: 'setup', step: '01. Setup', desc: 'Teams & tracks added' },
+                { key: 'tracks_assigned', step: '02. Tracks Assigned', desc: 'Teams see their track' },
+                { key: 'submissions_open', step: '03. Submissions Open', desc: 'Teams submit statement' },
+                { key: 'submissions_closed', step: '04. Locked', desc: 'Frozen for derangement' },
+                { key: 'statements_assigned', step: '05. Statements Live', desc: 'Challenges distributed' },
               ].map((p) => {
                 const isCurrent = currentPhase === p.key;
                 return (
                   <div
                     key={p.key}
                     onClick={() => handleSetPhase(p.key as Phase)}
-                    className={`cursor-pointer p-3.5 rounded-xl border transition-all ${
+                    className={`cursor-pointer p-4 border transition-all ${
                       isCurrent
-                        ? 'border-accent bg-accent/10 shadow-accent-glow'
-                        : 'border-border bg-surface-card hover:bg-surface-hover text-text-muted'
+                        ? 'border-white bg-white text-black font-medium'
+                        : 'border-white/10 bg-black text-neutral-400 hover:border-white/30 hover:text-white'
                     }`}
                   >
-                    <div className="flex items-center justify-between text-xs font-mono font-medium">
-                      <span className={isCurrent ? 'text-accent' : ''}>{p.step}</span>
-                      {isCurrent && <span className="w-2 h-2 rounded-full bg-accent animate-ping" />}
+                    <div className="flex items-center justify-between font-mono text-xs uppercase font-semibold">
+                      <span>{p.step}</span>
+                      {isCurrent && <span className="w-2 h-2 bg-black inline-block" />}
                     </div>
-                    <p className="text-[11px] text-text-dim mt-1.5 leading-snug">{p.desc}</p>
+                    <p className={`text-[11px] mt-1 leading-snug font-sans ${isCurrent ? 'text-neutral-800' : 'text-neutral-500'}`}>
+                      {p.desc}
+                    </p>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Primary Action Buttons */}
+          {/* Primary Operations Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Action 1: Generate Tracks */}
-            <div className="bg-surface rounded-2xl border border-border p-6 shadow-subtle space-y-3 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 text-xs font-mono text-text-muted">
-                    <Compass className="w-4 h-4 text-accent" />
-                    <span>TRACK ASSIGNMENT</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-text-dim">
-                    {teamsCount}/{totalCapacity} cap
+            <div className="border border-white/15 bg-neutral-950 p-6 space-y-4 flex flex-col justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-mono text-neutral-500 uppercase tracking-wider border-b border-white/10 pb-2">
+                  <span className="flex items-center gap-1.5">
+                    <Compass className="w-3.5 h-3.5 text-white" />
+                    Track Assignment
                   </span>
+                  <span>{teamsCount}/{totalCapacity} CAP</span>
                 </div>
-                <h4 className="text-base font-medium text-text">Generate Tracks</h4>
-                <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                  Randomly and evenly distribute {teamsCount} teams across {tracksCount} tracks (max {maxTeamsInput} per track).
+                <h4 className="text-2xl font-display uppercase tracking-tight text-white">Generate Tracks</h4>
+                <p className="text-xs text-neutral-400 font-sans leading-relaxed">
+                  Randomly and evenly distributes {teamsCount} teams across {tracksCount} tracks (max {maxTeamsInput} per track).
                 </p>
               </div>
 
-              <div className="pt-2">
-                <button
-                  onClick={() =>
-                    setConfirmModal({
-                      isOpen: true,
-                      title: 'Confirm Track Generation',
-                      description: `This will distribute all ${teamsCount} teams across ${tracksCount} tracks (max ${maxTeamsInput} per track). Any existing track assignments will be overwritten and phase set to 'tracks_assigned'.`,
-                      confirmText: 'Generate Tracks Now',
-                      variant: 'primary',
-                      onConfirm: handleGenerateTracks,
-                    })
-                  }
-                  disabled={actionLoading || teamsCount === 0 || tracksCount === 0}
-                  className="w-full py-2.5 px-4 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-all shadow-subtle hover:shadow-accent-glow disabled:opacity-40"
-                >
-                  Generate Tracks
-                </button>
-              </div>
+              <button
+                onClick={() =>
+                  setConfirmModal({
+                    isOpen: true,
+                    title: 'Generate Track Allocations',
+                    description: `This will distribute ${teamsCount} teams evenly across ${tracksCount} tracks (capacity: ${totalCapacity}). Existing track assignments will be overwritten and phase set to 'tracks_assigned'.`,
+                    confirmText: 'Execute Allocation',
+                    variant: 'primary',
+                    onConfirm: handleGenerateTracks,
+                  })
+                }
+                disabled={actionLoading || teamsCount === 0 || tracksCount === 0}
+                className="w-full py-3 px-4 bg-white hover:bg-neutral-200 text-black font-mono text-xs uppercase tracking-wider font-medium transition-colors disabled:opacity-20 disabled:hover:bg-white"
+              >
+                Generate Tracks
+              </button>
             </div>
 
-            {/* Action 2: Submissions Lock/Unlock */}
-            <div className="bg-surface rounded-2xl border border-border p-6 shadow-subtle space-y-3 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 text-xs font-mono text-text-muted">
-                    <FileText className="w-4 h-4 text-accent" />
-                    <span>SUBMISSION GATE</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-emerald-400">
-                    {submittedCount}/{teamsCount} submitted
+            {/* Action 2: Submission Gate */}
+            <div className="border border-white/15 bg-neutral-950 p-6 space-y-4 flex flex-col justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-mono text-neutral-500 uppercase tracking-wider border-b border-white/10 pb-2">
+                  <span className="flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-white" />
+                    Submission Gate
                   </span>
+                  <span>{submittedCount}/{teamsCount} READY</span>
                 </div>
-                <h4 className="text-base font-medium text-text">Submission Access</h4>
-                <p className="text-xs text-text-muted mt-1 leading-relaxed">
+                <h4 className="text-2xl font-display uppercase tracking-tight text-white">Submission Lock</h4>
+                <p className="text-xs text-neutral-400 font-sans leading-relaxed">
                   {currentPhase === 'submissions_open'
                     ? 'Submissions are currently OPEN. Teams can write and edit statements.'
                     : 'Submissions are currently LOCKED.'}
                 </p>
               </div>
 
-              <div className="pt-2 flex gap-2">
+              <div>
                 {currentPhase !== 'submissions_open' ? (
                   <button
                     onClick={() => handleSetPhase('submissions_open')}
                     disabled={actionLoading}
-                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-all shadow-subtle flex items-center justify-center gap-1.5"
+                    className="w-full py-3 px-4 bg-white hover:bg-neutral-200 text-black font-mono text-xs uppercase tracking-wider font-medium transition-colors flex items-center justify-center gap-2"
                   >
                     <Unlock className="w-3.5 h-3.5" />
                     <span>Open Submissions</span>
@@ -563,60 +592,56 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   <button
                     onClick={() => handleSetPhase('submissions_closed')}
                     disabled={actionLoading}
-                    className="w-full py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition-all shadow-subtle flex items-center justify-center gap-1.5"
+                    className="w-full py-3 px-4 border border-white/30 bg-neutral-900 hover:bg-neutral-800 text-white font-mono text-xs uppercase tracking-wider font-medium transition-colors flex items-center justify-center gap-2"
                   >
                     <Lock className="w-3.5 h-3.5" />
-                    <span>Close Submissions</span>
+                    <span>Lock Submissions</span>
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Action 3: Shuffle & Assign Statements */}
-            <div className="bg-surface rounded-2xl border border-border p-6 shadow-subtle space-y-3 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 text-xs font-mono text-accent">
-                    <Shuffle className="w-4 h-4" />
-                    <span>DERANGEMENT SHUFFLE</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-text-dim">
-                    {statementsCount} in pool
+            {/* Action 3: Derangement Shuffle */}
+            <div className="border border-white/15 bg-neutral-950 p-6 space-y-4 flex flex-col justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-mono text-neutral-500 uppercase tracking-wider border-b border-white/10 pb-2">
+                  <span className="flex items-center gap-1.5">
+                    <Shuffle className="w-3.5 h-3.5 text-white" />
+                    Derangement
                   </span>
+                  <span>{statementsCount} IN POOL</span>
                 </div>
-                <h4 className="text-base font-medium text-text">Shuffle & Assign</h4>
-                <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                  Shuffles statement pool to teams ensuring strictly that <strong>no team receives its own statement</strong>.
+                <h4 className="text-2xl font-display uppercase tracking-tight text-white">Shuffle &amp; Assign</h4>
+                <p className="text-xs text-neutral-400 font-sans leading-relaxed">
+                  Runs transactional cryptographic derangement ensuring strictly that <strong>no team receives its own statement</strong>.
                 </p>
               </div>
 
-              <div className="pt-2">
-                <button
-                  onClick={() =>
-                    setConfirmModal({
-                      isOpen: true,
-                      title: 'Confirm Statement Shuffle',
-                      description: `Shuffle ${statementsCount} statements to ${teamsCount} teams. Strict derangement algorithm guarantees no team gets its own statement. Teams will immediately see their assigned challenge live!`,
-                      confirmText: 'Shuffle & Assign Live',
-                      variant: 'primary',
-                      onConfirm: handleShuffleStatements,
-                    })
-                  }
-                  disabled={actionLoading || statementsCount < teamsCount || teamsCount === 0}
-                  className="w-full py-2.5 px-4 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-all shadow-subtle hover:shadow-accent-glow disabled:opacity-40"
-                >
-                  Shuffle & Assign Statements
-                </button>
-              </div>
+              <button
+                onClick={() =>
+                  setConfirmModal({
+                    isOpen: true,
+                    title: 'Trigger Derangement Shuffle',
+                    description: `Shuffle ${statementsCount} statements to ${teamsCount} teams. Strict derangement algorithm guarantees no team gets its own statement. Teams will immediately see their assigned challenge live!`,
+                    confirmText: 'Trigger Live Shuffle',
+                    variant: 'primary',
+                    onConfirm: handleShuffleStatements,
+                  })
+                }
+                disabled={actionLoading || statementsCount < teamsCount || teamsCount === 0}
+                className="w-full py-3 px-4 bg-white hover:bg-neutral-200 text-black font-mono text-xs uppercase tracking-wider font-medium transition-colors disabled:opacity-20 disabled:hover:bg-white"
+              >
+                Shuffle &amp; Assign Statements
+              </button>
             </div>
           </div>
 
-          {/* Configuration & Reset Controls */}
+          {/* Config & Reset */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-surface rounded-2xl border border-border p-6 shadow-subtle space-y-4">
-              <h4 className="text-sm font-medium text-text">Capacity Settings</h4>
+            <div className="border border-white/15 bg-neutral-950 p-6 space-y-4">
+              <h4 className="text-base font-display uppercase tracking-wide text-white">Track Density Config</h4>
               <div className="flex items-center gap-3">
-                <label className="text-xs text-text-muted flex-shrink-0">
+                <label className="text-xs font-mono text-neutral-400 uppercase">
                   Max teams per track:
                 </label>
                 <input
@@ -625,23 +650,23 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   max={20}
                   value={maxTeamsInput}
                   onChange={(e) => setMaxTeamsInput(parseInt(e.target.value) || 1)}
-                  className="w-20 bg-surface-card text-text text-xs rounded-xl border border-border px-3 py-2 outline-none focus:border-accent font-mono"
+                  className="w-20 bg-black text-white text-xs border border-white/20 px-3 py-2 outline-none focus:border-white font-mono"
                 />
                 <button
                   onClick={handleSaveConfig}
-                  className="px-3 py-2 rounded-xl bg-surface-subtle hover:bg-surface-hover text-text text-xs border border-border transition-colors"
+                  className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-mono uppercase tracking-wider border border-white/20 transition-colors"
                 >
                   Save
                 </button>
               </div>
-              <p className="text-[11px] text-text-dim">
-                Total capacity: {tracksCount} tracks × {maxTeamsInput} = {tracksCount * maxTeamsInput} teams capacity. Currently {teamsCount} registered.
+              <p className="text-[11px] text-neutral-500 font-mono">
+                Capacity calculation: {tracksCount} tracks × {maxTeamsInput} max/track = {tracksCount * maxTeamsInput} total slots. Currently {teamsCount} registered teams.
               </p>
             </div>
 
-            <div className="bg-surface rounded-2xl border border-border p-6 shadow-subtle space-y-4">
-              <h4 className="text-sm font-medium text-text text-rose-400">Reset Assignments</h4>
-              <div className="flex items-center gap-3">
+            <div className="border border-white/15 bg-neutral-950 p-6 space-y-4">
+              <h4 className="text-base font-display uppercase tracking-wide text-white">Assignment Reset Operations</h4>
+              <div className="flex flex-wrap items-center gap-3 font-mono text-xs">
                 <button
                   onClick={() =>
                     setConfirmModal({
@@ -653,7 +678,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       onConfirm: () => handleReset('tracks'),
                     })
                   }
-                  className="px-3 py-2 rounded-xl bg-surface-subtle hover:bg-rose-500/10 text-rose-400 text-xs border border-border hover:border-rose-500/30 transition-colors"
+                  className="px-3.5 py-2 border border-white/15 hover:border-white/40 text-neutral-300 hover:text-white uppercase tracking-wider transition-colors"
                 >
                   Reset Tracks
                 </button>
@@ -669,7 +694,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       onConfirm: () => handleReset('statements'),
                     })
                   }
-                  className="px-3 py-2 rounded-xl bg-surface-subtle hover:bg-rose-500/10 text-rose-400 text-xs border border-border hover:border-rose-500/30 transition-colors"
+                  className="px-3.5 py-2 border border-white/15 hover:border-white/40 text-neutral-300 hover:text-white uppercase tracking-wider transition-colors"
                 >
                   Reset Statements
                 </button>
@@ -685,32 +710,35 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       onConfirm: () => handleReset('all'),
                     })
                   }
-                  className="px-3 py-2 rounded-xl bg-surface-subtle hover:bg-rose-500/10 text-rose-400 text-xs border border-border hover:border-rose-500/30 transition-colors"
+                  className="px-3.5 py-2 border border-white/25 hover:border-white text-white uppercase tracking-wider transition-colors"
                 >
                   Reset All
                 </button>
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* TAB 2: TEAMS */}
       {activeTab === 'teams' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-text">Registered Teams ({teamsCount})</h3>
-            <div className="flex items-center gap-2">
+            <h3 className="text-xl font-display uppercase tracking-wide text-white">Registered Teams [{teamsCount}]</h3>
+            <div className="flex items-center gap-2 font-mono text-xs">
               <button
-                onClick={() => setIsBulkAddOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-border text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+                onClick={() => {
+                  setBulkInput(SAMPLE_BULK_TEAMS);
+                  setIsBulkAddOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 border border-white/15 hover:border-white/40 bg-neutral-950 text-neutral-300 hover:text-white uppercase tracking-wider transition-colors"
               >
                 <Upload className="w-3.5 h-3.5" />
                 <span>Bulk Add (CSV)</span>
               </button>
               <button
                 onClick={() => setIsAddTeamOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-all shadow-subtle"
+                className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-neutral-200 text-black font-semibold uppercase tracking-wider transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Team</span>
@@ -718,10 +746,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             </div>
           </div>
 
-          <div className="bg-surface rounded-2xl border border-border overflow-hidden shadow-subtle">
+          <div className="border border-white/15 bg-neutral-950 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-surface-subtle border-b border-border text-text-muted font-mono text-[11px] uppercase">
+                <thead className="bg-black border-b border-white/10 text-neutral-400 font-mono text-[11px] uppercase tracking-wider">
                   <tr>
                     <th className="py-3 px-4 font-medium">Team Name</th>
                     <th className="py-3 px-4 font-medium">Code</th>
@@ -730,43 +758,43 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     <th className="py-3 px-4 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-white/10 font-mono text-xs">
                   {data?.teams.map((team) => (
-                    <tr key={team.id} className="hover:bg-surface-card transition-colors">
-                      <td className="py-3 px-4 font-medium text-text">{team.name}</td>
-                      <td className="py-3 px-4 font-mono text-accent-light">{team.code}</td>
-                      <td className="py-3 px-4 text-text-muted">
+                    <tr key={team.id} className="hover:bg-white/5 transition-colors">
+                      <td className="py-3 px-4 font-sans font-medium text-white">{team.name}</td>
+                      <td className="py-3 px-4 text-white font-bold tracking-wider">{team.code}</td>
+                      <td className="py-3 px-4 text-neutral-400 font-sans">
                         {team.track_name ? (
-                          <span className="px-2 py-0.5 rounded-md bg-surface-subtle border border-border font-mono text-[11px]">
+                          <span className="px-2 py-0.5 border border-white/10 bg-white/5 text-[11px] font-mono">
                             {team.track_name}
                           </span>
                         ) : (
-                          <span className="text-text-dim font-mono text-[11px]">Unassigned</span>
+                          <span className="text-neutral-600 font-mono text-[11px]">// UNASSIGNED</span>
                         )}
                       </td>
                       <td className="py-3 px-4">
                         {team.has_submitted ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>Submitted</span>
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono text-white bg-white/10 px-2 py-0.5 border border-white/20">
+                            <Check className="w-3 h-3 text-white" />
+                            <span>SUBMITTED</span>
                           </span>
                         ) : (
-                          <span className="text-[11px] font-mono text-text-dim">Pending</span>
+                          <span className="text-[11px] font-mono text-neutral-600">// PENDING</span>
                         )}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleRegenerateCode(team.id, team.name)}
                             title="Regenerate team code"
-                            className="p-1 rounded-lg text-text-muted hover:text-accent hover:bg-surface-subtle transition-colors"
+                            className="p-1 text-neutral-400 hover:text-white transition-colors"
                           >
                             <Key className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDeleteTeam(team.id, team.name)}
                             title="Delete team"
-                            className="p-1 rounded-lg text-text-muted hover:text-rose-400 hover:bg-surface-subtle transition-colors"
+                            className="p-1 text-neutral-400 hover:text-white transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -776,8 +804,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   ))}
                   {data?.teams.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-xs text-text-dim font-mono">
-                        No teams added yet. Click &quot;Add Team&quot; or &quot;Bulk Add&quot; to begin.
+                      <td colSpan={5} className="py-10 text-center text-xs text-neutral-500 font-mono uppercase tracking-widest">
+                        No teams registered. Click &quot;Add Team&quot; or &quot;Bulk Add&quot; to populate roster.
                       </td>
                     </tr>
                   )}
@@ -785,21 +813,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               </table>
             </div>
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* TAB 3: TRACKS */}
       {activeTab === 'tracks' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-text">Tracks ({tracksCount})</h3>
+            <h3 className="text-xl font-display uppercase tracking-wide text-white">Tracks [{tracksCount}]</h3>
             <button
               onClick={() => {
                 setEditingTrack(null);
                 setTrackNameInput('');
                 setIsTrackModalOpen(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-all shadow-subtle"
+              className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-neutral-200 text-black font-semibold text-xs font-mono uppercase tracking-wider transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Track</span>
@@ -810,45 +838,43 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             {data?.tracks.map((tr) => (
               <div
                 key={tr.id}
-                className="bg-surface rounded-2xl border border-border p-5 shadow-subtle space-y-3 flex flex-col justify-between"
+                className="border border-white/15 bg-neutral-950 p-5 space-y-4 flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-mono text-accent uppercase tracking-wider">
-                      Domain
-                    </span>
-                    <div className="flex items-center gap-1">
+                  <div className="flex items-center justify-between text-[10px] font-mono uppercase text-neutral-500 border-b border-white/10 pb-2 mb-2">
+                    <span>TRACK DOMAIN</span>
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => {
                           setEditingTrack(tr);
                           setTrackNameInput(tr.name);
                           setIsTrackModalOpen(true);
                         }}
-                        className="p-1 rounded text-text-muted hover:text-text"
+                        className="p-1 text-neutral-400 hover:text-white"
                       >
                         <Edit2 className="w-3 h-3" />
                       </button>
                       <button
                         onClick={() => handleDeleteTrack(tr.id, tr.name)}
-                        className="p-1 rounded text-text-muted hover:text-rose-400"
+                        className="p-1 text-neutral-400 hover:text-white"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
-                  <h4 className="text-base font-light text-text">{tr.name}</h4>
+                  <h4 className="text-xl font-display uppercase tracking-tight text-white">{tr.name}</h4>
                 </div>
 
-                <div className="space-y-1.5 pt-2 border-t border-border/50">
-                  <div className="flex items-center justify-between text-[11px] font-mono text-text-muted">
-                    <span>Teams assigned:</span>
-                    <span className="text-text font-medium">
+                <div className="space-y-2 pt-2 border-t border-white/10">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 uppercase">
+                    <span>Teams Enrolled:</span>
+                    <span className="text-white font-bold">
                       {tr.team_count} / {maxTeamsInput}
                     </span>
                   </div>
-                  <div className="w-full h-1.5 bg-surface-subtle rounded-full overflow-hidden">
+                  <div className="w-full h-1 bg-neutral-900 border border-white/10">
                     <div
-                      className="h-full bg-accent rounded-full transition-all"
+                      className="h-full bg-white transition-all"
                       style={{
                         width: `${Math.min(100, (tr.team_count / maxTeamsInput) * 100)}%`,
                       }}
@@ -858,129 +884,126 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               </div>
             ))}
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* TAB 4: STATEMENTS */}
       {activeTab === 'statements' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-text">Problem Statements Pool ({statementsCount})</h3>
+            <h3 className="text-xl font-display uppercase tracking-wide text-white">Problem Statement Pool [{statementsCount}]</h3>
             <button
-              onClick={() => setIsStatementModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-all shadow-subtle"
+              onClick={() => {
+                setNewStatementBody('');
+                setIsStatementModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-neutral-200 text-black font-semibold text-xs font-mono uppercase tracking-wider transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Add Admin Statement</span>
+              <span>Add Pool Statement</span>
             </button>
           </div>
 
-          <div className="bg-surface rounded-2xl border border-border divide-y divide-border overflow-hidden shadow-subtle">
+          <div className="border border-white/15 bg-neutral-950 divide-y divide-white/10">
             {data?.statements.map((stmt) => (
-              <div key={stmt.id} className="p-4 hover:bg-surface-card transition-colors space-y-2">
+              <div key={stmt.id} className="p-4 hover:bg-white/5 transition-colors space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-[10px] font-mono px-2 py-0.5 rounded-md border ${
-                        stmt.source === 'admin'
-                          ? 'bg-accent/10 border-accent/20 text-accent-light'
-                          : 'bg-surface-subtle border-border text-text-muted'
-                      }`}
-                    >
-                      {stmt.source === 'admin' ? 'ADMIN POOL' : 'TEAM SUBMISSION'}
+                  <div className="flex items-center gap-2 font-mono">
+                    <span className="text-[10px] px-2 py-0.5 border border-white/20 bg-white/5 text-neutral-300 uppercase">
+                      {stmt.source === 'admin' ? 'ADMIN CURATED' : 'TEAM SUBMISSION'}
                     </span>
-                    <span className="text-xs font-medium text-text">{stmt.author_name}</span>
+                    <span className="text-xs text-white uppercase font-sans font-medium">{stmt.author_name}</span>
                   </div>
                   <button
                     onClick={() => handleDeleteStatement(stmt.id)}
-                    className="p-1 rounded text-text-muted hover:text-rose-400 transition-colors"
+                    className="p-1 text-neutral-400 hover:text-white transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <p className="text-xs text-text-muted leading-relaxed whitespace-pre-wrap">{stmt.body}</p>
+                <p className="text-xs text-neutral-300 leading-relaxed font-sans whitespace-pre-wrap">{stmt.body}</p>
               </div>
             ))}
             {data?.statements.length === 0 && (
-              <div className="p-8 text-center text-xs text-text-dim font-mono">
-                No problem statements yet. Add admin statements or open submissions for teams.
+              <div className="p-10 text-center text-xs text-neutral-500 font-mono uppercase tracking-widest">
+                No problem statements in pool. Add admin statements or unlock submissions.
               </div>
             )}
           </div>
-        </motion.div>
+        </div>
       )}
 
-      {/* TAB 5: SETTINGS & LOGS */}
+      {/* TAB 5: SETTINGS & SECURITY */}
       {activeTab === 'settings' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+        <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Password Change Form */}
-            <div className="bg-surface rounded-2xl border border-border p-6 shadow-subtle space-y-4">
-              <h3 className="text-sm font-medium text-text flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-accent" />
-                <span>Change Admin Password</span>
+            {/* Password Management */}
+            <div className="border border-white/15 bg-neutral-950 p-6 space-y-4">
+              <h3 className="text-lg font-display uppercase tracking-wide text-white flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-white" />
+                <span>Change Root Admin Password</span>
               </h3>
-              <p className="text-xs text-text-muted">
-                Admin password is saved strictly as a salted bcrypt hash in PostgreSQL.
+              <p className="text-xs text-neutral-400 font-sans leading-relaxed">
+                Stored strictly as a salted bcrypt hash (`crypt(..., gen_salt('bf', 10))`) in Postgres.
               </p>
 
-              <form onSubmit={handleChangePasswordSubmit} className="space-y-3">
+              <form onSubmit={handleChangePasswordSubmit} className="space-y-3 font-mono text-xs">
                 <input
                   type="password"
-                  placeholder="Current Password"
+                  placeholder="CURRENT PASSWORD"
                   value={oldPassword}
                   onChange={(e) => setOldPassword(e.target.value)}
-                  className="w-full bg-surface-card text-text text-xs rounded-xl border border-border p-3 outline-none focus:border-accent"
+                  className="w-full bg-black text-white p-3 border border-white/20 focus:border-white focus:outline-none uppercase placeholder:text-neutral-700"
                 />
                 <input
                   type="password"
-                  placeholder="New Password (min 8 characters)"
+                  placeholder="NEW PASSWORD (MIN 8 CHARS)"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full bg-surface-card text-text text-xs rounded-xl border border-border p-3 outline-none focus:border-accent"
+                  className="w-full bg-black text-white p-3 border border-white/20 focus:border-white focus:outline-none uppercase placeholder:text-neutral-700"
                 />
                 <button
                   type="submit"
                   disabled={!oldPassword || newPassword.length < 8}
-                  className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-all disabled:opacity-40"
+                  className="px-5 py-2.5 bg-white hover:bg-neutral-200 text-black font-semibold uppercase tracking-wider transition-colors disabled:opacity-20"
                 >
-                  Update Password
+                  Update Credentials
                 </button>
               </form>
             </div>
 
-            {/* Security & System Info */}
-            <div className="bg-surface rounded-2xl border border-border p-6 shadow-subtle space-y-3">
-              <h3 className="text-sm font-medium text-text">Security Architecture</h3>
-              <ul className="text-xs text-text-muted space-y-2 list-disc pl-4 leading-relaxed">
-                <li>Row Level Security (RLS) active on all sensitive database tables.</li>
-                <li>Zero direct client access with anon key; strictly managed via SECURITY DEFINER stored procedures.</li>
-                <li>Throttling &amp; 15-minute lockouts logged in <code className="text-accent font-mono">auth_attempts</code>.</li>
-                <li>Cryptographic derangement protects statement anonymity.</li>
+            {/* Security Audit Telemetry */}
+            <div className="border border-white/15 bg-neutral-950 p-6 space-y-3">
+              <h3 className="text-lg font-display uppercase tracking-wide text-white">System Security Architecture</h3>
+              <ul className="text-xs text-neutral-400 space-y-2 list-disc pl-4 font-mono leading-relaxed">
+                <li>Row Level Security (RLS) active on all PostgreSQL tables.</li>
+                <li>Zero direct client anon table access; all actions execute through SECURITY DEFINER stored procedures.</li>
+                <li>Brute-force protection: 5 failures log a 15-minute lockout in `auth_attempts`.</li>
+                <li>Cryptographic derangement guarantees zero author leakage on shuffle.</li>
               </ul>
             </div>
           </div>
 
-          {/* Realtime Audit Logs */}
-          <div className="bg-surface rounded-2xl border border-border p-6 shadow-subtle space-y-4">
-            <h3 className="text-sm font-medium text-text">Audit Log (Recent 20 actions)</h3>
+          {/* Audit Logs */}
+          <div className="border border-white/15 bg-neutral-950 p-6 space-y-4">
+            <h3 className="text-lg font-display uppercase tracking-wide text-white">Audit Log [Recent 20 Operations]</h3>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-surface-subtle border-b border-border text-text-muted font-mono text-[11px] uppercase">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-black border-b border-white/10 text-neutral-400 text-[11px] uppercase tracking-wider">
                   <tr>
                     <th className="py-2.5 px-3 font-medium">Timestamp</th>
                     <th className="py-2.5 px-3 font-medium">Action</th>
                     <th className="py-2.5 px-3 font-medium">Details</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border font-mono text-[11px]">
+                <tbody className="divide-y divide-white/10 text-[11px]">
                   {data?.audit_logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-surface-card">
-                      <td className="py-2 px-3 text-text-dim">
+                    <tr key={log.id} className="hover:bg-white/5">
+                      <td className="py-2.5 px-3 text-neutral-500">
                         {new Date(log.performed_at).toLocaleTimeString()}
                       </td>
-                      <td className="py-2 px-3 text-accent-light">{log.action}</td>
-                      <td className="py-2 px-3 text-text-muted truncate max-w-xs">
+                      <td className="py-2.5 px-3 text-white font-semibold uppercase">{log.action}</td>
+                      <td className="py-2.5 px-3 text-neutral-400 truncate max-w-xs font-mono">
                         {JSON.stringify(log.details)}
                       </td>
                     </tr>
@@ -989,7 +1012,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               </table>
             </div>
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* Confirmation Modal */}
@@ -1008,32 +1031,32 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       <Modal
         isOpen={isAddTeamOpen}
         onClose={() => setIsAddTeamOpen(false)}
-        title="Add Team"
-        description="Create a single team. If code is left empty, a unique random code will be generated."
+        title="Add Single Team"
+        description="Register a team. Leave code blank to auto-generate unique code."
       >
-        <form onSubmit={handleAddTeamSubmit} className="space-y-3">
+        <form onSubmit={handleAddTeamSubmit} className="space-y-3 font-mono text-xs">
           <input
             type="text"
-            placeholder="Team Name (e.g. Quantum Leap)"
+            placeholder="TEAM NAME (E.G. QUANTUM LEAP)"
             value={newTeamName}
             onChange={(e) => setNewTeamName(e.target.value)}
             required
-            className="w-full bg-surface-card text-text text-xs rounded-xl border border-border p-3 outline-none focus:border-accent"
+            className="w-full bg-black text-white p-3 border border-white/20 focus:border-white focus:outline-none uppercase placeholder:text-neutral-700"
           />
           <input
             type="text"
-            placeholder="Custom Code (Optional, e.g. NEX-4091)"
+            placeholder="CUSTOM CODE (OPTIONAL, E.G. NEX-4091)"
             value={newTeamCode}
             onChange={(e) => setNewTeamCode(e.target.value.toUpperCase())}
-            className="w-full bg-surface-card text-text text-xs rounded-xl border border-border p-3 outline-none focus:border-accent uppercase font-mono"
+            className="w-full bg-black text-white p-3 border border-white/20 focus:border-white focus:outline-none uppercase placeholder:text-neutral-700"
           />
           <div className="flex justify-end pt-2">
             <button
               type="submit"
               disabled={!newTeamName.trim()}
-              className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-all"
+              className="px-5 py-2.5 bg-white hover:bg-neutral-200 text-black font-semibold uppercase tracking-wider transition-colors disabled:opacity-20"
             >
-              Add Team
+              Register Team
             </button>
           </div>
         </form>
@@ -1043,24 +1066,33 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       <Modal
         isOpen={isBulkAddOpen}
         onClose={() => setIsBulkAddOpen(false)}
-        title="Bulk Add Teams (CSV / List)"
-        description="Paste team names (one per line, or Name,Code format). Codes will be auto-generated if omitted."
+        title="Bulk Roster Ingestion"
+        description="Paste team list (Name,Code format or Name only). Codes will be generated if omitted."
       >
-        <form onSubmit={handleBulkAddSubmit} className="space-y-3">
+        <form onSubmit={handleBulkAddSubmit} className="space-y-3 font-mono text-xs">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setBulkInput(SAMPLE_BULK_TEAMS)}
+              className="text-[11px] text-neutral-400 hover:text-white underline underline-offset-4"
+            >
+              Load 20 Sample Teams
+            </button>
+          </div>
           <textarea
-            rows={6}
-            placeholder={`Quantum Leap\nCyberPulse,CYBER-01\nAeroDynamics\nSynapse Labs`}
+            rows={7}
+            placeholder={`Quantum Leap,NEX-1001\nCyberPulse,NEX-1002\nAeroDynamics,NEX-1003`}
             value={bulkInput}
             onChange={(e) => setBulkInput(e.target.value)}
-            className="w-full bg-surface-card text-text text-xs rounded-xl border border-border p-3 outline-none focus:border-accent font-mono"
+            className="w-full bg-black text-white p-3 border border-white/20 focus:border-white focus:outline-none font-mono"
           />
           <div className="flex justify-end pt-2">
             <button
               type="submit"
               disabled={!bulkInput.trim()}
-              className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-all"
+              className="px-5 py-2.5 bg-white hover:bg-neutral-200 text-black font-semibold uppercase tracking-wider transition-colors disabled:opacity-20"
             >
-              Process Bulk Upload
+              Ingest Roster
             </button>
           </div>
         </form>
@@ -1070,22 +1102,33 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       <Modal
         isOpen={isTrackModalOpen}
         onClose={() => setIsTrackModalOpen(false)}
-        title={editingTrack ? 'Edit Track' : 'Add Track'}
+        title={editingTrack ? 'Edit Track Domain' : 'Add Track Domain'}
       >
-        <form onSubmit={handleSaveTrack} className="space-y-3">
+        <form onSubmit={handleSaveTrack} className="space-y-3 font-mono text-xs">
+          <div className="flex justify-end">
+            {!editingTrack && (
+              <button
+                type="button"
+                onClick={() => setTrackNameInput(SAMPLE_TRACKS[Math.floor(Math.random() * SAMPLE_TRACKS.length)])}
+                className="text-[11px] text-neutral-400 hover:text-white underline underline-offset-4"
+              >
+                Sample Track
+              </button>
+            )}
+          </div>
           <input
             type="text"
-            placeholder="Track Name (e.g. AI & Machine Learning)"
+            placeholder="TRACK NAME (E.G. AI & AGENTS)"
             value={trackNameInput}
             onChange={(e) => setTrackNameInput(e.target.value)}
             required
-            className="w-full bg-surface-card text-text text-xs rounded-xl border border-border p-3 outline-none focus:border-accent"
+            className="w-full bg-black text-white p-3 border border-white/20 focus:border-white focus:outline-none uppercase placeholder:text-neutral-700"
           />
           <div className="flex justify-end pt-2">
             <button
               type="submit"
               disabled={!trackNameInput.trim()}
-              className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-all"
+              className="px-5 py-2.5 bg-white hover:bg-neutral-200 text-black font-semibold uppercase tracking-wider transition-colors disabled:opacity-20"
             >
               {editingTrack ? 'Save Changes' : 'Create Track'}
             </button>
@@ -1097,24 +1140,33 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       <Modal
         isOpen={isStatementModalOpen}
         onClose={() => setIsStatementModalOpen(false)}
-        title="Add Statement to Pool"
-        description="Add a pre-curated problem statement directly to the shuffle pool."
+        title="Add Curated Pool Statement"
+        description="Insert an admin problem statement directly into the derangement pool."
       >
-        <form onSubmit={handleAddStatementSubmit} className="space-y-3">
+        <form onSubmit={handleAddStatementSubmit} className="space-y-3 text-xs">
+          <div className="flex justify-end font-mono">
+            <button
+              type="button"
+              onClick={() => setNewStatementBody(SAMPLE_STATEMENTS[Math.floor(Math.random() * SAMPLE_STATEMENTS.length)])}
+              className="text-[11px] text-neutral-400 hover:text-white underline underline-offset-4"
+            >
+              Load Sample Statement
+            </button>
+          </div>
           <textarea
-            rows={4}
+            rows={5}
             maxLength={500}
-            placeholder="Write problem statement (10–500 chars)..."
+            placeholder="Write challenge statement (10–500 chars)..."
             value={newStatementBody}
             onChange={(e) => setNewStatementBody(e.target.value)}
-            className="w-full bg-surface-card text-text text-xs rounded-xl border border-border p-3 outline-none focus:border-accent"
+            className="w-full bg-black text-white p-3 border border-white/20 focus:border-white focus:outline-none font-sans"
           />
-          <div className="flex justify-between items-center text-[11px] font-mono text-text-dim pt-1">
+          <div className="flex justify-between items-center font-mono text-[11px] text-neutral-500 pt-1">
             <span>{newStatementBody.length}/500</span>
             <button
               type="submit"
               disabled={newStatementBody.trim().length < 10}
-              className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-medium transition-all disabled:opacity-40"
+              className="px-5 py-2.5 bg-white hover:bg-neutral-200 text-black font-semibold uppercase tracking-wider transition-colors disabled:opacity-20"
             >
               Add to Pool
             </button>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Lock, AlertCircle, ShieldAlert } from 'lucide-react';
+import { ArrowRight, Lock, AlertCircle, ShieldAlert, Check } from 'lucide-react';
 import { teamCodeSchema } from '../schemas';
 import { apiTeamLogin } from '../lib/supabase';
 import { TeamSession } from '../types';
@@ -9,6 +9,13 @@ interface LandingPageProps {
   onLoginSuccess: (session: TeamSession) => void;
   onNavigateToAdmin: () => void;
 }
+
+const SAMPLE_TEAMS = [
+  { code: 'NEX-1001', name: 'Quantum Leap', track: 'AI & Autonomous Agents' },
+  { code: 'NEX-1002', name: 'CyberPulse', track: 'Decentralized Systems' },
+  { code: 'NEX-1003', name: 'AeroDynamics', track: 'Cybersecurity Shield' },
+  { code: 'NEX-1004', name: 'Synapse Labs', track: 'Fintech Markets' },
+];
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNavigateToAdmin }) => {
   const [code, setCode] = useState('');
@@ -20,7 +27,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNavi
     e.preventDefault();
     setError(null);
 
-    // Client-side rate check
     if (failedAttempts >= 5) {
       setError('Too many failed attempts. Locked out for 15 minutes.');
       return;
@@ -49,7 +55,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNavi
       }
     } catch (err: any) {
       setFailedAttempts((prev) => prev + 1);
-      // PRD: Generic error on failure ("Invalid code"), never reveal whether a code exists
       if (err.message && err.message.toLowerCase().includes('rate limit')) {
         setError(err.message);
       } else {
@@ -60,93 +65,156 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNavi
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCode(e.target.value.toUpperCase());
-    if (error) setError(null);
+  const handleSelectSample = (sampleCode: string) => {
+    setCode(sampleCode);
+    setError(null);
   };
 
   return (
-    <div className="relative min-h-[92vh] flex flex-col items-center justify-center px-4 overflow-hidden">
-      {/* Background radial glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] bg-accent/5 rounded-full blur-[140px] pointer-events-none" />
+    <div className="min-h-screen bg-black text-white flex flex-col justify-between px-6 py-10 selection:bg-white selection:text-black">
+      {/* Top Telemetry Bar */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6 max-w-6xl mx-auto w-full">
+        <div className="flex items-center gap-3">
+          <span className="w-2 h-2 bg-white inline-block" />
+          <span className="font-mono text-xs uppercase tracking-widest text-neutral-400">
+            Nexus 0 // System Online
+          </span>
+        </div>
+        <div className="flex items-center gap-6 font-mono text-xs text-neutral-400">
+          <span>30 Teams</span>
+          <span className="text-neutral-700">/</span>
+          <span>6 Tracks</span>
+          <span className="text-neutral-700">/</span>
+          <span>Derangement Engine Active</span>
+        </div>
+      </header>
 
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="w-full max-w-md mx-auto text-center space-y-10 z-10"
-      >
-        {/* Event name as large, light-weight typography */}
-        <div className="space-y-2 select-none">
-          <h1 className="text-6xl md:text-7xl font-light tracking-tight text-text">
-            Nexus <span className="font-extralight text-text-muted">0</span>
+      {/* Main Hero Container */}
+      <main className="max-w-4xl mx-auto w-full my-auto py-12 space-y-12">
+        {/* Tall Display Title */}
+        <div className="space-y-4 text-center">
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-neutral-500">
+            Realtime Collegiate Event Flow
+          </p>
+          <h1 className="text-7xl sm:text-8xl md:text-9xl font-display font-medium tracking-tight uppercase leading-none text-white select-none">
+            Nexus 0
           </h1>
-          <p className="text-xs uppercase tracking-[0.25em] text-text-dim font-mono">
-            Event Flow Platform
+          <p className="text-xs md:text-sm text-neutral-400 font-sans max-w-lg mx-auto leading-relaxed">
+            Enter your team code to access your track assignment, submit your problem statement, and receive your assigned challenge.
           </p>
         </div>
 
-        {/* Centered single input */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="relative group">
-            <input
-              type="text"
-              value={code}
-              onChange={handleChange}
-              placeholder="Enter your team code"
-              maxLength={16}
-              disabled={isLoading || failedAttempts >= 5}
-              autoFocus
-              spellCheck={false}
-              autoComplete="off"
-              className="w-full h-14 pl-5 pr-14 bg-surface text-text font-mono text-center text-sm md:text-base tracking-widest uppercase rounded-2xl border border-border focus:border-accent focus:ring-1 focus:ring-accent/40 placeholder:text-text-dim placeholder:font-sans placeholder:normal-case placeholder:tracking-normal transition-all outline-none shadow-subtle disabled:opacity-50"
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !code.trim() || failedAttempts >= 5}
-              aria-label="Submit team code"
-              className="absolute right-2 top-2 h-10 w-10 flex items-center justify-center rounded-xl bg-surface-subtle hover:bg-accent text-text-muted hover:text-white border border-border hover:border-accent/80 transition-all disabled:opacity-30 disabled:hover:bg-surface-subtle disabled:hover:text-text-muted"
-            >
-              {isLoading ? (
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-              )}
-            </button>
-          </div>
-
-          {/* Feedback messages */}
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                className="flex items-center justify-center gap-1.5 text-xs text-rose-400 font-mono tracking-tight"
+        {/* Input Terminal */}
+        <div className="max-w-md mx-auto w-full space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="relative group">
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => {
+                  setCode(e.target.value.toUpperCase());
+                  if (error) setError(null);
+                }}
+                placeholder="ENTER TEAM CODE"
+                maxLength={16}
+                disabled={isLoading || failedAttempts >= 5}
+                autoFocus
+                spellCheck={false}
+                autoComplete="off"
+                className="w-full h-14 pl-5 pr-14 bg-black text-white font-mono text-center text-base tracking-widest uppercase border border-white/20 focus:border-white focus:outline-none transition-colors placeholder:text-neutral-700 disabled:opacity-40"
+              />
+              <button
+                type="submit"
+                disabled={isLoading || !code.trim() || failedAttempts >= 5}
+                aria-label="Submit team code"
+                className="absolute right-2 top-2 h-10 w-10 flex items-center justify-center bg-white text-black hover:bg-neutral-200 transition-colors disabled:opacity-20 disabled:hover:bg-white"
               >
-                {failedAttempts >= 5 ? <ShieldAlert className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-                <span>{error}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </form>
+                {isLoading ? (
+                  <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                ) : (
+                  <ArrowRight className="w-4 h-4" />
+                )}
+              </button>
+            </div>
 
-        {/* Subtle sample code hints for testing */}
-        <div className="text-[11px] text-text-dim font-mono pt-4 select-none">
-          Sample codes: <span className="text-text-muted hover:text-accent cursor-pointer transition-colors" onClick={() => setCode('NEX-1001')}>NEX-1001</span>,{' '}
-          <span className="text-text-muted hover:text-accent cursor-pointer transition-colors" onClick={() => setCode('NEX-1002')}>NEX-1002</span>
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="flex items-center justify-center gap-1.5 text-xs text-neutral-300 font-mono"
+                >
+                  {failedAttempts >= 5 ? <ShieldAlert className="w-3.5 h-3.5 text-white" /> : <AlertCircle className="w-3.5 h-3.5 text-white" />}
+                  <span>{error}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </form>
+
+          {/* Sample Content Roster */}
+          <div className="pt-6 border-t border-white/10 space-y-3">
+            <div className="flex items-center justify-between text-[11px] font-mono text-neutral-500 uppercase tracking-wider">
+              <span>Sample Team Roster</span>
+              <span>Click to load</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {SAMPLE_TEAMS.map((st) => (
+                <button
+                  key={st.code}
+                  type="button"
+                  onClick={() => handleSelectSample(st.code)}
+                  className={`text-left p-2.5 border transition-all ${
+                    code === st.code
+                      ? 'border-white bg-white/10 text-white'
+                      : 'border-white/10 bg-neutral-950 text-neutral-400 hover:border-white/30 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center justify-between font-mono text-xs font-semibold text-white">
+                    <span>{st.code}</span>
+                    {code === st.code && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div className="text-[11px] truncate text-neutral-300 font-sans mt-0.5">{st.name}</div>
+                  <div className="text-[10px] text-neutral-500 truncate font-mono">{st.track}</div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      </motion.div>
 
-      {/* Discreet admin portal link */}
-      <footer className="absolute bottom-6 left-0 right-0 flex items-center justify-center z-10">
-        <button
-          onClick={onNavigateToAdmin}
-          className="flex items-center gap-1.5 text-[11px] text-text-dim hover:text-text-muted transition-colors py-1 px-2 rounded-lg hover:bg-surface-subtle"
-        >
-          <Lock className="w-3 h-3 opacity-60" />
-          <span>Admin Portal</span>
-        </button>
+        {/* 5-Step Protocol Architecture Bar */}
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-px bg-white/10 border border-white/10 p-px">
+          {[
+            { num: '01', title: 'Setup', desc: 'Roster & tracks initialized' },
+            { num: '02', title: 'Track Reveal', desc: 'Even track distribution' },
+            { num: '03', title: 'Drafting', desc: 'Team problem formulation' },
+            { num: '04', title: 'Lockdown', desc: 'Freeze pool for derangement' },
+            { num: '05', title: 'Live Swap', desc: 'Zero-knowledge assignment' },
+          ].map((step) => (
+            <div key={step.num} className="bg-black p-4 space-y-1">
+              <span className="font-mono text-[10px] text-neutral-500">{step.num}</span>
+              <h4 className="font-display uppercase text-sm text-white tracking-wide">{step.title}</h4>
+              <p className="text-[11px] text-neutral-400 leading-snug font-sans">{step.desc}</p>
+            </div>
+          ))}
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="flex items-center justify-between border-t border-white/10 pt-6 max-w-6xl mx-auto w-full text-xs font-mono text-neutral-500">
+        <div>
+          <span>Nexus 0 // College Tech Symposium</span>
+        </div>
+        <div>
+          <button
+            onClick={onNavigateToAdmin}
+            className="flex items-center gap-1.5 text-neutral-400 hover:text-white transition-colors uppercase tracking-wider"
+          >
+            <Lock className="w-3 h-3" />
+            <span>Admin Control</span>
+          </button>
+        </div>
       </footer>
     </div>
   );
