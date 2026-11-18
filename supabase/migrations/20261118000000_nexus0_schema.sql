@@ -380,7 +380,7 @@ BEGIN
 
     IF NOT v_valid THEN
         INSERT INTO public.auth_attempts (identifier, attempted_at, success) VALUES (p_client_id, now(), false);
-        RAISE EXCEPTION 'Invalid admin credentials.';
+        RAISE EXCEPTION 'Funi guy, u aint no worthy of Bruce Wayne.';
     END IF;
 
     INSERT INTO public.auth_attempts (identifier, attempted_at, success) VALUES (p_client_id, now(), true);
