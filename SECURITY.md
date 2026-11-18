@@ -1,8 +1,8 @@
-# Security Model & Threat Assessment — Nexus 0
+# Security Model & Threat Assessment — Nexus E-0
 
 ## 1. Threat Model & Design Principles
 
-Nexus 0 was designed for high-stakes college hackathons and technical symposiums where participants may attempt to inspect network traffic, reverse engineer endpoints, discover track assignments prematurely, leak other teams' submissions, or brute-force administrative interfaces.
+Nexus E-0 was designed for high-stakes college hackathons and technical symposiums where participants may attempt to inspect network traffic, reverse engineer endpoints, discover track assignments prematurely, leak other teams' submissions, or brute-force administrative interfaces.
 
 ### Core Security Guarantees:
 1. **Zero Anon Table Access**: Direct `SELECT`, `INSERT`, `UPDATE`, or `DELETE` using the Supabase publishable/anonymous key is restricted by PostgreSQL Row Level Security (RLS) on all sensitive tables (`teams`, `problem_statements`, `admin_credentials`, `sessions`, `auth_attempts`, `audit_logs`).

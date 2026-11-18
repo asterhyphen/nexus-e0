@@ -41,10 +41,13 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
       }
     } catch (err: any) {
       setFailedAttempts((prev) => prev + 1);
-      if (err.message && err.message.toLowerCase().includes('rate limit')) {
-        setError(err.message);
-      } else {
+      const msg = err.message || '';
+      if (msg.includes('Invalid admin') || msg.includes('credentials')) {
         setError('Invalid admin credentials.');
+      } else if (msg.toLowerCase().includes('rate limit')) {
+        setError(msg);
+      } else {
+        setError(msg || 'Invalid admin credentials.');
       }
     } finally {
       setIsLoading(false);
@@ -63,7 +66,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
           <span>Return to Landing</span>
         </button>
         <span className="font-mono text-xs text-neutral-500 uppercase tracking-widest">
-          Nexus 0 // Root Portal
+          Nexus E-0 // Root Portal
         </span>
       </header>
 

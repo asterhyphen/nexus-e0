@@ -401,7 +401,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         <div>
           <div className="flex items-center gap-4">
             <h1 className="text-3xl md:text-4xl font-display font-medium uppercase tracking-tight text-white">
-              Nexus 0 // Admin Console
+              Nexus E-0 // Admin Console
             </h1>
             <PhaseBadge phase={currentPhase} size="md" />
           </div>

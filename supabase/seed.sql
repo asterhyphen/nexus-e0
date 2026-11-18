@@ -1,4 +1,4 @@
--- Sample seed data for Nexus 0
+-- Sample seed data for Nexus E-0
 -- Sets up 6 tracks, 30 teams with sample codes, and sample admin statements
 
 -- 1. Insert 6 Tracks (Capacity: 6 tracks * 5 teams = 30 teams if max_teams_per_track is 5, or 15 tracks if max is 2)

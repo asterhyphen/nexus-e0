@@ -55,10 +55,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNavi
       }
     } catch (err: any) {
       setFailedAttempts((prev) => prev + 1);
-      if (err.message && err.message.toLowerCase().includes('rate limit')) {
-        setError(err.message);
+      const msg = err.message || '';
+      if (msg.includes('Invalid code') || msg.includes('team code format')) {
+        setError('Invalid team code');
+      } else if (msg.toLowerCase().includes('rate limit')) {
+        setError(msg);
       } else {
-        setError('Invalid code');
+        setError(msg || 'Invalid code');
       }
     } finally {
       setIsLoading(false);
@@ -77,7 +80,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNavi
         <div className="flex items-center gap-3">
           <span className="w-2 h-2 bg-white inline-block" />
           <span className="font-mono text-xs uppercase tracking-widest text-neutral-400">
-            Nexus 0 // System Online
+            Nexus E-0 // System Online
           </span>
         </div>
         <div className="flex items-center gap-6 font-mono text-xs text-neutral-400">
@@ -97,7 +100,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNavi
             Realtime Collegiate Event Flow
           </p>
           <h1 className="text-7xl sm:text-8xl md:text-9xl font-display font-medium tracking-tight uppercase leading-none text-white select-none">
-            Nexus 0
+            Nexus E-0
           </h1>
           <p className="text-xs md:text-sm text-neutral-400 font-sans max-w-lg mx-auto leading-relaxed">
             Enter your team code to access your track assignment, submit your problem statement, and receive your assigned challenge.
@@ -204,7 +207,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNavi
       {/* Footer */}
       <footer className="flex items-center justify-between border-t border-white/10 pt-6 max-w-6xl mx-auto w-full text-xs font-mono text-neutral-500">
         <div>
-          <span>Nexus 0 // College Tech Symposium</span>
+          <span>Nexus E-0 // College Tech Symposium</span>
         </div>
         <div>
           <button
