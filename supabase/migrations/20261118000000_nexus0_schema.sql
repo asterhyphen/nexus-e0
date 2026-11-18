@@ -504,7 +504,17 @@ BEGIN
             COALESCE(t.name, 'Admin') AS author_name,
             ps.body,
             ps.source,
-            ps.created_at
+            ps.created_at,
+            (
+                SELECT string_agg(assigned_t.name, ', ')
+                FROM public.teams assigned_t
+                WHERE assigned_t.assigned_statement_id = ps.id
+            ) AS assigned_team_names,
+            (
+                SELECT COUNT(*)::INT
+                FROM public.teams assigned_t
+                WHERE assigned_t.assigned_statement_id = ps.id
+            ) AS assigned_teams_count
         FROM public.problem_statements ps
         LEFT JOIN public.teams t ON ps.team_id = t.id
         ORDER BY ps.created_at ASC

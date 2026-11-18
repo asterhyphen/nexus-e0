@@ -256,7 +256,89 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
+-- 4. FIX: ADMIN OVERVIEW RPC (INCLUDES WHICH TEAM EACH STATEMENT IS ASSIGNED TO)
+CREATE OR REPLACE FUNCTION public.rpc_admin_get_overview(p_token TEXT)
+RETURNS JSONB AS $$
+DECLARE
+    v_state JSONB;
+    v_teams JSONB;
+    v_tracks JSONB;
+    v_statements JSONB;
+    v_recent_logs JSONB;
+BEGIN
+    PERFORM public.verify_admin_session(p_token);
+
+    SELECT to_jsonb(s) INTO v_state FROM (SELECT phase, max_teams_per_track, updated_at FROM public.event_state WHERE id = 1) s;
+
+    SELECT COALESCE(jsonb_agg(to_jsonb(t_row)), '[]'::jsonb) INTO v_teams FROM (
+        SELECT 
+            t.id, 
+            t.name, 
+            t.code, 
+            t.track_id, 
+            tr.name AS track_name,
+            t.assigned_statement_id,
+            (ps.id IS NOT NULL) AS has_submitted,
+            ps.body AS submitted_statement_body
+        FROM public.teams t
+        LEFT JOIN public.tracks tr ON t.track_id = tr.id
+        LEFT JOIN public.problem_statements ps ON ps.team_id = t.id
+        ORDER BY t.created_at ASC
+    ) t_row;
+
+    SELECT COALESCE(jsonb_agg(to_jsonb(tr_row)), '[]'::jsonb) INTO v_tracks FROM (
+        SELECT 
+            tr.id, 
+            tr.name, 
+            COUNT(t.id)::INT AS team_count
+        FROM public.tracks tr
+        LEFT JOIN public.teams t ON t.track_id = tr.id
+        GROUP BY tr.id, tr.name
+        ORDER BY tr.created_at ASC
+    ) tr_row;
+
+    SELECT COALESCE(jsonb_agg(to_jsonb(ps_row)), '[]'::jsonb) INTO v_statements FROM (
+        SELECT 
+            ps.id,
+            ps.team_id,
+            COALESCE(t.name, 'Admin') AS author_name,
+            ps.body,
+            ps.source,
+            ps.created_at,
+            (
+                SELECT string_agg(assigned_t.name, ', ')
+                FROM public.teams assigned_t
+                WHERE assigned_t.assigned_statement_id = ps.id
+            ) AS assigned_team_names,
+            (
+                SELECT COUNT(*)::INT
+                FROM public.teams assigned_t
+                WHERE assigned_t.assigned_statement_id = ps.id
+            ) AS assigned_teams_count
+        FROM public.problem_statements ps
+        LEFT JOIN public.teams t ON ps.team_id = t.id
+        ORDER BY ps.created_at ASC
+    ) ps_row;
+
+    SELECT COALESCE(jsonb_agg(to_jsonb(l_row)), '[]'::jsonb) INTO v_recent_logs FROM (
+        SELECT id, action, details, performed_at 
+        FROM public.audit_logs 
+        ORDER BY performed_at DESC 
+        LIMIT 20
+    ) l_row;
+
+    RETURN jsonb_build_object(
+        'state', v_state,
+        'teams', v_teams,
+        'tracks', v_tracks,
+        'statements', v_statements,
+        'audit_logs', v_recent_logs
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
+
 -- Grant permissions to anon and authenticated
 GRANT EXECUTE ON FUNCTION public.rpc_admin_reset_assignments(TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_shuffle_statements(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_get_team_dashboard(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_admin_get_overview(TEXT) TO anon, authenticated;

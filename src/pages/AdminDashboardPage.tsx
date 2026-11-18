@@ -352,29 +352,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         <div>
           <div className="flex items-center gap-4">
             <h1 className="text-3xl md:text-4xl font-display font-light uppercase tracking-tight text-white">
-              Nexus E-0 // Dashboard
+              Batcave
             </h1>
             <PhaseBadge phase={currentPhase} size="md" />
           </div>
-          <p className="text-xs font-mono text-neutral-500 mt-1 uppercase tracking-wider">
-            {teamsCount} Teams • {tracksCount} Tracks • {statementsCount} Statements in Pool • {submittedCount} Submitted
-          </p>
         </div>
 
         <div className="flex items-center gap-2 font-mono text-xs">
+          <button
+            onClick={onNavigateHome}
+            className="flex items-center gap-1.5 px-3 py-2 bg-neutral-950 border border-white/10 hover:border-white/40 text-neutral-400 hover:text-white uppercase tracking-wider transition-colors"
+            title="Go to Landing Portal"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>Portal</span>
+          </button>
           <button
             onClick={fetchOverview}
             className="p-2.5 bg-neutral-950 border border-white/10 hover:border-white/40 text-neutral-400 hover:text-white transition-colors"
             title="Refresh state"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={onNavigateHome}
-            className="flex items-center gap-1.5 px-3 py-2 bg-neutral-950 border border-white/10 hover:border-white/40 text-neutral-400 hover:text-white uppercase tracking-wider transition-colors"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            <span>Landing</span>
           </button>
           <button
             onClick={onLogout}
@@ -446,7 +444,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
               {[
                 { key: 'setup', step: '01. Setup', desc: 'Teams & tracks added' },
-                { key: 'tracks_assigned', step: '02. Tracks Assigned', desc: 'Teams see assigned track' },
+                { key: 'tracks_assigned', step: '02. Tracks', desc: 'Teams see assigned track' },
                 { key: 'submissions_open', step: '03. Submissions Open', desc: 'Teams submit challenge' },
                 { key: 'submissions_closed', step: '04. Submissions Locked', desc: 'Locked for shuffle' },
                 { key: 'statements_assigned', step: '05. Statements Live', desc: 'Challenges distributed' },
@@ -828,25 +826,61 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           </div>
 
           <div className="border border-white/15 bg-neutral-950 divide-y divide-white/10">
-            {data?.statements.map((stmt) => (
-              <div key={stmt.id} className="p-4 hover:bg-white/5 transition-colors space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 font-mono">
-                    <span className="text-[10px] px-2 py-0.5 border border-white/20 bg-white/5 text-neutral-300 uppercase">
-                      {stmt.source === 'admin' ? 'ADMIN' : 'TEAM'}
-                    </span>
-                    <span className="text-xs text-white uppercase font-sans font-medium">{stmt.author_name}</span>
+            {data?.statements.map((stmt) => {
+              const assignedTeams = data?.teams.filter((t) => t.assigned_statement_id === stmt.id) || [];
+
+              return (
+                <div key={stmt.id} className="p-4 hover:bg-white/5 transition-colors space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-mono">
+                      <span className="text-[10px] px-2 py-0.5 border border-white/20 bg-white/5 text-neutral-300 uppercase font-semibold">
+                        {stmt.source === 'admin' ? 'ADMIN POOL' : 'TEAM SUBMISSION'}
+                      </span>
+                      <span className="text-xs text-white uppercase font-sans font-medium">
+                        Author: {stmt.author_name}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteStatement(stmt.id)}
+                      title="Delete Statement"
+                      className="p-1 text-neutral-400 hover:text-white transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleDeleteStatement(stmt.id)}
-                    className="p-1 text-neutral-400 hover:text-white transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+
+                  <p className="text-xs text-neutral-300 leading-relaxed font-sans whitespace-pre-wrap selection:bg-white selection:text-black">
+                    {stmt.body}
+                  </p>
+
+                  <div className="pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">
+                        ASSIGNED TO:
+                      </span>
+                      {assignedTeams.length > 0 ? (
+                        assignedTeams.map((t) => (
+                          <span
+                            key={t.id}
+                            className="px-2 py-0.5 bg-white text-black font-bold text-[11px] uppercase tracking-wide border border-white"
+                          >
+                            {t.name}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[11px] text-neutral-500 uppercase italic">
+                          Unassigned (In Pool)
+                        </span>
+                      )}
+                    </div>
+
+                    <span className="text-[10px] text-neutral-400 font-mono">
+                      {assignedTeams.length} {assignedTeams.length === 1 ? 'TEAM' : 'TEAMS'} ASSIGNED
+                    </span>
+                  </div>
                 </div>
-                <p className="text-xs text-neutral-300 leading-relaxed font-sans whitespace-pre-wrap">{stmt.body}</p>
-              </div>
-            ))}
+              );
+            })}
             {data?.statements.length === 0 && (
               <div className="p-10 text-center text-xs text-neutral-500 font-mono uppercase tracking-widest">
                 No problem statements yet.

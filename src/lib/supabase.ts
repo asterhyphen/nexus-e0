@@ -71,7 +71,7 @@ export async function apiAdminLogin(password: string): Promise<{ success: boolea
   });
 
   if (error) {
-    throw new Error(error.message || 'Invalid admin credentials.');
+    throw new Error(error.message || 'Funi guy, u aint no worthy of Bruce Wayne.');
   }
 
   return data;

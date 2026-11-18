@@ -59,6 +59,8 @@ export interface AdminStatementItem {
   body: string;
   source: 'team' | 'admin';
   created_at: string;
+  assigned_team_names?: string | null;
+  assigned_teams_count?: number;
 }
 
 export interface AuditLogItem {

@@ -26,7 +26,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
 
     const validation = adminPasswordSchema.safeParse(password);
     if (!validation.success) {
-      setError('Invalid admin credentials.');
+      setError('Funi guy, u aint no worthy of Bruce Wayne.');
       setFailedAttempts((prev) => prev + 1);
       return;
     }
@@ -45,7 +45,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
       if (msg.toLowerCase().includes('rate limit')) {
         setError(msg);
       } else {
-        setError('Invalid admin credentials.');
+        setError('Funi guy, u aint no worthy of Bruce Wayne.');
       }
     } finally {
       setIsLoading(false);
@@ -75,10 +75,10 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
             <Lock className="w-5 h-5" />
           </div>
           <h1 className="text-4xl md:text-5xl font-display font-light uppercase tracking-tight text-white">
-            Admin Access
+            Batcave Access
           </h1>
           <p className="text-xs text-neutral-500 font-sans leading-relaxed">
-            Enter administrator password
+            Hello Master Bruce, Enter the secret code to enter the Batcave.
           </p>
         </div>
 

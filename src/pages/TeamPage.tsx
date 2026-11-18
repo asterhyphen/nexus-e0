@@ -20,11 +20,10 @@ export const TeamPage: React.FC<TeamPageProps> = ({ session, onLogout }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // User input focus and dirty tracking to prevent polling overwrite
-  const isEditingRef = useRef(false);
+  const DRAFT_STORAGE_KEY = `nexus_draft_${session.team_id}`;
   const isInitializedRef = useRef(false);
-  const userTextRef = useRef('');
-  userTextRef.current = statementText;
+  const userHasTypedRef = useRef(false);
+  const hadSubmittedRef = useRef(false);
 
   const fetchData = useCallback(async (manual = false) => {
     if (manual) setIsRefreshing(true);
@@ -33,16 +32,31 @@ export const TeamPage: React.FC<TeamPageProps> = ({ session, onLogout }) => {
       setData(res);
 
       if (!isInitializedRef.current) {
-        setStatementText(res.own_statement?.body || '');
-        isInitializedRef.current = true;
-      } else if (!isEditingRef.current) {
-        // Only update input if user is not actively editing
-        if (!res.own_statement) {
-          // If statements were wiped/reset in the DB, clear input
-          setStatementText('');
-        } else if (userTextRef.current === '') {
-          // If input is empty and not focused, load DB statement
+        // Initial load: prefer server statement if already submitted, otherwise local draft
+        if (res.own_statement?.body) {
           setStatementText(res.own_statement.body);
+          hadSubmittedRef.current = true;
+        } else {
+          try {
+            const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+            if (savedDraft) {
+              setStatementText(savedDraft);
+              userHasTypedRef.current = true;
+            }
+          } catch (_) {}
+        }
+        isInitializedRef.current = true;
+      } else {
+        // Background sync: NEVER clear user's actively drafted input on blur/tab switch!
+        // Only clear if team previously submitted, admin wiped the DB, and user hasn't typed a new draft.
+        if (hadSubmittedRef.current && !res.own_statement && !userHasTypedRef.current) {
+          setStatementText('');
+          hadSubmittedRef.current = false;
+          try {
+            localStorage.removeItem(DRAFT_STORAGE_KEY);
+          } catch (_) {}
+        } else if (res.own_statement) {
+          hadSubmittedRef.current = true;
         }
       }
     } catch (err: any) {
@@ -54,7 +68,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ session, onLogout }) => {
         setTimeout(() => setIsRefreshing(false), 500);
       }
     }
-  }, [session.token, onLogout]);
+  }, [session.token, onLogout, DRAFT_STORAGE_KEY]);
 
   useEffect(() => {
     fetchData();
@@ -97,7 +111,11 @@ export const TeamPage: React.FC<TeamPageProps> = ({ session, onLogout }) => {
     try {
       await apiTeamSubmitStatement(session.token, validation.data);
       setSubmitSuccess(true);
-      isEditingRef.current = false;
+      userHasTypedRef.current = false;
+      hadSubmittedRef.current = true;
+      try {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch (_) {}
       await fetchData();
       setTimeout(() => setSubmitSuccess(false), 4000);
     } catch (err: any) {
@@ -293,16 +311,13 @@ export const TeamPage: React.FC<TeamPageProps> = ({ session, onLogout }) => {
             <div className="relative">
               <textarea
                 value={statementText}
-                onFocus={() => {
-                  isEditingRef.current = true;
-                }}
-                onBlur={() => {
-                  isEditingRef.current = false;
-                }}
                 onChange={(e) => {
-                  isEditingRef.current = true;
+                  userHasTypedRef.current = true;
                   if (e.target.value.length <= 500) {
                     setStatementText(e.target.value);
+                    try {
+                      localStorage.setItem(DRAFT_STORAGE_KEY, e.target.value);
+                    } catch (_) {}
                   }
                 }}
                 disabled={!isSubmissionsOpen || isSubmitting}

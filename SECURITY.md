@@ -24,5 +24,5 @@ Nexus E-0 was designed for high-stakes college hackathons and technical symposiu
 4. (Optional) Run `supabase/seed.sql` to populate initial tracks, statements, and 30 sample teams.
 
 ### Initial Admin Credentials:
-- Default admin password on initial seed: `adminnexus2026`
+- Default admin password on initial seed: `x`
 - **Important**: Change this password immediately after deployment via the **Settings** tab in `/admin/dashboard`.
