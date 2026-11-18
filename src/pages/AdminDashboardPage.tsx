@@ -352,7 +352,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         <div>
           <div className="flex items-center gap-4">
             <h1 className="text-3xl md:text-4xl font-display font-light uppercase tracking-tight text-white">
-              Nexus 0 // Dashboard
+              Nexus E-0 // Dashboard
             </h1>
             <PhaseBadge phase={currentPhase} size="md" />
           </div>
@@ -455,7 +455,20 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 return (
                   <div
                     key={p.key}
-                    onClick={() => handleSetPhase(p.key as Phase)}
+                    onClick={() => {
+                      if (p.key === 'statements_assigned') {
+                        setConfirmModal({
+                          isOpen: true,
+                          title: 'Shuffle & Assign Statements',
+                          description: `Transitioning to Statements Live will run derangement shuffle across all ${teamsCount} teams. No team will receive its own statement. Continue?`,
+                          confirmText: 'Shuffle & Assign',
+                          variant: 'primary',
+                          onConfirm: handleShuffleStatements,
+                        });
+                      } else {
+                        handleSetPhase(p.key as Phase);
+                      }
+                    }}
                     className={`cursor-pointer p-4 border transition-all ${
                       isCurrent
                         ? 'border-white bg-white text-black font-medium'
@@ -573,13 +586,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   setConfirmModal({
                     isOpen: true,
                     title: 'Shuffle & Assign Statements',
-                    description: `Shuffle ${statementsCount} statements to ${teamsCount} teams. No team will receive its own statement. Teams will immediately see their assigned challenge live!`,
+                    description: `Shuffle problem statements across all ${teamsCount} teams. No team will receive its own statement. Teams will immediately see their assigned challenge live!`,
                     confirmText: 'Shuffle & Assign',
                     variant: 'primary',
                     onConfirm: handleShuffleStatements,
                   })
                 }
-                disabled={actionLoading || statementsCount < teamsCount || teamsCount === 0}
+                disabled={actionLoading || statementsCount === 0 || teamsCount === 0}
                 className="w-full py-3 px-4 bg-white hover:bg-neutral-200 text-black font-mono text-xs uppercase tracking-wider font-medium transition-colors disabled:opacity-20 disabled:hover:bg-white"
               >
                 Shuffle &amp; Assign
@@ -589,7 +602,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
           {/* Reset Controls */}
           <div className="border border-white/15 bg-neutral-950 p-6 space-y-4">
-            <h4 className="text-base font-display uppercase tracking-wide text-white">Reset Assignments</h4>
+            <h4 className="text-base font-display uppercase tracking-wide text-white">Reset Controls</h4>
             <div className="flex flex-wrap items-center gap-3 font-mono text-xs">
               <button
                 onClick={() =>
@@ -611,8 +624,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 onClick={() =>
                   setConfirmModal({
                     isOpen: true,
-                    title: 'Reset Statements',
-                    description: 'Reset all team assigned problem statements?',
+                    title: 'Reset Statements (Wipe & Reopen)',
+                    description: 'This will reset all team assigned statements, delete previous team submissions so teams can draft completely fresh, and reopen submissions. Continue?',
                     confirmText: 'Reset Statements',
                     variant: 'danger',
                     onConfirm: () => handleReset('statements'),
@@ -620,15 +633,15 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 }
                 className="px-3.5 py-2 border border-white/15 hover:border-white/40 text-neutral-300 hover:text-white uppercase tracking-wider transition-colors"
               >
-                Reset Statements
+                Reset Statements (Wipe &amp; Reopen)
               </button>
 
               <button
                 onClick={() =>
                   setConfirmModal({
                     isOpen: true,
-                    title: 'Reset All Assignments',
-                    description: 'Reset both tracks and assigned statements and revert to setup phase?',
+                    title: 'Reset All (Tracks + Statements + Setup)',
+                    description: 'This will reset both tracks and statement assignments, wipe team submissions, and revert phase to initial setup. Continue?',
                     confirmText: 'Reset All',
                     variant: 'danger',
                     onConfirm: () => handleReset('all'),

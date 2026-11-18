@@ -65,7 +65,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNavi
       {/* Top Header */}
       <header className="flex items-center justify-between max-w-5xl mx-auto w-full">
         <div className="font-mono text-xs uppercase tracking-widest text-neutral-500">
-          Nexus 0
+          Nexus E-0
         </div>
       </header>
 
@@ -73,10 +73,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onNavi
       <main className="max-w-md mx-auto w-full my-auto space-y-8 text-center">
         <div className="space-y-2 select-none">
           <h1 className="text-6xl sm:text-7xl md:text-8xl font-display font-light tracking-tight uppercase text-white">
-            Nexus 0
+            Nexus E-0
           </h1>
           <p className="font-mono text-xs uppercase tracking-[0.25em] text-neutral-500">
-            Event Flow Platform
+            Ashiq needs peace lol, help him find peace by finding problem statements.
           </p>
         </div>
 

@@ -1,4 +1,4 @@
-# Nexus 0 — Event Flow Platform
+# Nexus E-0 — Event Flow Platform
 
 A minimal, realtime web platform designed to coordinate college tech symposiums and hackathons.
 Teams log in with a code, receive a track assignment, submit a problem statement, and receive another team's statement via a cryptographic derangement shuffle triggered by the admin.

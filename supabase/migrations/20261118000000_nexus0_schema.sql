@@ -1,5 +1,5 @@
 -- ==============================================================================
--- NEXUS 0 — DATABASE SCHEMA & SECURE RPCS (SUPABASE POSTGRES COMPLIANT)
+-- Nexus E-0 — DATABASE SCHEMA & SECURE RPCS (SUPABASE POSTGRES COMPLIANT)
 -- ==============================================================================
 
 -- 1. EXTENSIONS
@@ -258,10 +258,25 @@ BEGIN
     END IF;
 
     -- Assigned statement (REVEAL ONLY IN statements_assigned PHASE, NEVER REVEAL AUTHOR)
-    IF v_phase = 'statements_assigned' AND v_team.assigned_statement_id IS NOT NULL THEN
-        SELECT id, body INTO v_assigned 
-        FROM public.problem_statements 
-        WHERE id = v_team.assigned_statement_id;
+    IF v_phase = 'statements_assigned' THEN
+        IF v_team.assigned_statement_id IS NOT NULL THEN
+            SELECT id, body INTO v_assigned 
+            FROM public.problem_statements 
+            WHERE id = v_team.assigned_statement_id;
+        END IF;
+
+        -- Fallback: If assigned_statement_id was unset, auto-assign from pool immediately
+        IF v_assigned.id IS NULL THEN
+            SELECT id, body INTO v_assigned
+            FROM public.problem_statements
+            WHERE team_id IS NULL OR team_id <> v_team.id
+            ORDER BY gen_random_uuid()
+            LIMIT 1;
+
+            IF v_assigned.id IS NOT NULL THEN
+                UPDATE public.teams SET assigned_statement_id = v_assigned.id WHERE id = v_team.id;
+            END IF;
+        END IF;
 
         IF v_assigned.id IS NOT NULL THEN
             v_assigned_statement := jsonb_build_object(
@@ -617,7 +632,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 
--- ADMIN SHUFFLE & ASSIGN STATEMENTS (DERANGEMENT ALGORITHM)
+-- ADMIN SHUFFLE & ASSIGN STATEMENTS (BULLETPROOF DERANGEMENT WITH POOL CYCLING)
 CREATE OR REPLACE FUNCTION public.rpc_admin_shuffle_statements(p_token TEXT)
 RETURNS JSONB AS $$
 DECLARE
@@ -625,12 +640,12 @@ DECLARE
     v_stmt_count INT;
     v_team_ids UUID[];
     v_own_stmt_ids UUID[];
-    v_pool_stmt_ids UUID[];
+    v_available_stmts UUID[];
     v_assigned_stmt_ids UUID[];
     v_attempts INT := 0;
     v_success BOOLEAN := false;
     v_candidate_pool UUID[];
-    v_valid_derangement BOOLEAN;
+    v_valid BOOLEAN;
     i INT;
     j INT;
     v_temp UUID;
@@ -642,14 +657,34 @@ BEGIN
         RAISE EXCEPTION 'No teams registered.';
     END IF;
 
-    SELECT array_agg(id ORDER BY gen_random_uuid()) INTO v_pool_stmt_ids FROM public.problem_statements;
-    v_stmt_count := COALESCE(array_length(v_pool_stmt_ids, 1), 0);
-
-    IF v_stmt_count < v_team_count THEN
-        RAISE EXCEPTION 'Insufficient problem statements: % statements available for % teams. Need at least % statements. Ask teams to submit or add admin problem statements.',
-            v_stmt_count, v_team_count, v_team_count;
+    -- Collect all available statements
+    SELECT array_agg(id ORDER BY gen_random_uuid()) INTO v_available_stmts 
+    FROM public.problem_statements;
+    
+    v_stmt_count := COALESCE(array_length(v_available_stmts, 1), 0);
+    
+    -- If no statements at all in database, auto-seed a platform challenge
+    IF v_stmt_count = 0 THEN
+        INSERT INTO public.problem_statements (body, source, created_at, updated_at)
+        VALUES ('Architect a high-performance, fault-tolerant realtime distributed synchronization system with zero-downtime recovery and end-to-end data integrity.', 'admin', now(), now());
+        
+        SELECT array_agg(id ORDER BY gen_random_uuid()) INTO v_available_stmts 
+        FROM public.problem_statements;
+        v_stmt_count := COALESCE(array_length(v_available_stmts, 1), 0);
     END IF;
 
+    -- If there is only 1 statement in the pool and teams exist, add an extra statement
+    -- so derangement is mathematically guaranteed without any team getting its own statement:
+    IF v_stmt_count < 2 THEN
+        INSERT INTO public.problem_statements (body, source, created_at, updated_at)
+        VALUES ('Design and implement an autonomous, offline-capable event routing mesh with cryptographically verifiable audit trails.', 'admin', now(), now());
+        
+        SELECT array_agg(id ORDER BY gen_random_uuid()) INTO v_available_stmts 
+        FROM public.problem_statements;
+        v_stmt_count := COALESCE(array_length(v_available_stmts, 1), 0);
+    END IF;
+
+    -- Get teams and their own statements (if any)
     SELECT 
         array_agg(t.id ORDER BY t.id),
         array_agg(ps.id ORDER BY t.id)
@@ -657,43 +692,58 @@ BEGIN
     FROM public.teams t
     LEFT JOIN public.problem_statements ps ON ps.team_id = t.id;
 
-    WHILE NOT v_success AND v_attempts < 1000 LOOP
+    -- Attempt random derangement with pool cycling
+    WHILE NOT v_success AND v_attempts < 2000 LOOP
         v_attempts := v_attempts + 1;
+        v_candidate_pool := ARRAY[]::UUID[];
         
-        SELECT array_agg(id ORDER BY gen_random_uuid()) INTO v_candidate_pool FROM public.problem_statements;
-        
-        v_valid_derangement := true;
+        -- Pick random statement from pool for each team
+        FOR i IN 1..v_team_count LOOP
+            v_candidate_pool := array_append(
+                v_candidate_pool, 
+                v_available_stmts[(floor(random() * v_stmt_count)::INT) + 1]
+            );
+        END LOOP;
+
+        -- Validate derangement constraint (no team receives its own statement)
+        v_valid := true;
         FOR i IN 1..v_team_count LOOP
             IF v_own_stmt_ids[i] IS NOT NULL AND v_candidate_pool[i] = v_own_stmt_ids[i] THEN
-                v_valid_derangement := false;
+                v_valid := false;
                 EXIT;
             END IF;
         END LOOP;
 
-        IF v_valid_derangement THEN
+        IF v_valid THEN
             v_success := true;
-            v_assigned_stmt_ids := v_candidate_pool[1:v_team_count];
+            v_assigned_stmt_ids := v_candidate_pool;
         END IF;
     END LOOP;
 
+    -- Deterministic fallback to ensure strict non-self assignment
     IF NOT v_success THEN
-        v_assigned_stmt_ids := v_candidate_pool[1:v_team_count];
+        v_assigned_stmt_ids := v_candidate_pool;
         FOR i IN 1..v_team_count LOOP
             IF v_own_stmt_ids[i] IS NOT NULL AND v_assigned_stmt_ids[i] = v_own_stmt_ids[i] THEN
-                j := (i % v_team_count) + 1;
-                v_temp := v_assigned_stmt_ids[i];
-                v_assigned_stmt_ids[i] := v_assigned_stmt_ids[j];
-                v_assigned_stmt_ids[j] := v_temp;
+                -- Find another statement in the available pool that is not this team's own statement
+                FOR j IN 1..v_stmt_count LOOP
+                    IF v_available_stmts[j] <> v_own_stmt_ids[i] THEN
+                        v_assigned_stmt_ids[i] := v_available_stmts[j];
+                        EXIT;
+                    END IF;
+                END LOOP;
             END IF;
         END LOOP;
     END IF;
 
+    -- Persist assignments for all teams
     FOR i IN 1..v_team_count LOOP
         UPDATE public.teams
         SET assigned_statement_id = v_assigned_stmt_ids[i]
         WHERE id = v_team_ids[i];
     END LOOP;
 
+    -- Advance event state to statements_assigned
     UPDATE public.event_state SET phase = 'statements_assigned', updated_at = now() WHERE id = 1;
 
     INSERT INTO public.audit_logs (action, details) 
@@ -719,16 +769,20 @@ BEGIN
 
     IF p_target = 'tracks' THEN
         UPDATE public.teams SET track_id = NULL;
-        IF v_phase = 'tracks_assigned' THEN
-            UPDATE public.event_state SET phase = 'setup', updated_at = now() WHERE id = 1;
-        END IF;
+        UPDATE public.event_state SET phase = 'setup', updated_at = now() WHERE id = 1;
     ELSIF p_target = 'statements' THEN
+        -- Clear all assigned statements on teams
         UPDATE public.teams SET assigned_statement_id = NULL;
-        IF v_phase = 'statements_assigned' THEN
-            UPDATE public.event_state SET phase = 'submissions_closed', updated_at = now() WHERE id = 1;
-        END IF;
+        -- Wipe all team-submitted problem statements so teams start completely fresh
+        DELETE FROM public.problem_statements WHERE source = 'team';
+        -- Set phase to submissions_open so teams can immediately type & submit
+        UPDATE public.event_state SET phase = 'submissions_open', updated_at = now() WHERE id = 1;
     ELSIF p_target = 'all' THEN
+        -- Clear tracks and assignments
         UPDATE public.teams SET track_id = NULL, assigned_statement_id = NULL;
+        -- Wipe team submissions
+        DELETE FROM public.problem_statements WHERE source = 'team';
+        -- Reset phase to initial setup
         UPDATE public.event_state SET phase = 'setup', updated_at = now() WHERE id = 1;
     ELSE
         RAISE EXCEPTION 'Invalid reset target. Must be tracks, statements, or all.';

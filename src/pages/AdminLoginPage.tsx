@@ -128,7 +128,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
 
       {/* Footer */}
       <footer className="text-center text-xs font-mono text-neutral-700 uppercase tracking-widest">
-        Nexus 0
+        Nexus E-0
       </footer>
     </div>
   );
