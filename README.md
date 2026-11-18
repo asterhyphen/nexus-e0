@@ -8,7 +8,7 @@ Teams log in with a code, receive a track assignment, submit a problem statement
 ## ⚡ Tech Stack
 - **Frontend**: React 18 (Vite), TypeScript, Tailwind CSS, Framer Motion, Lucide Icons, Zod
 - **Backend & Database**: Supabase (PostgreSQL, Realtime, Row Level Security, `SECURITY DEFINER` RPCs, `pgcrypto`)
-- **Hosting**: Vercel
+- **Hosting**: Netlify
 
 ---
 
